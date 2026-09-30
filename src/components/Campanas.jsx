@@ -838,7 +838,7 @@ export default function Campanas({ initialCamp = null }) {
           ${camp.service_id || null},
           ${camp.utilizable_pct != null ? camp.utilizable_pct : 100},
           ${camp.solicitado_por || ''},
-          false
+          ${!!camp.es_legacy}
         )
         RETURNING id
       `
