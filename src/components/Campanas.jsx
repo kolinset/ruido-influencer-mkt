@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import sql from '../lib/db'
+import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram } from '../lib/links'
 import Modal from './Modal'
 import SharePanel from './SharePanel'
 import Reportes from './Reportes'
@@ -1002,10 +1003,49 @@ export default function Campanas({ initialCamp = null }) {
     } catch (e) { console.error(e) }
   }
 
+  const [convirtiendo, setConvirtiendo] = useState(false)
+
+  // Convierte los links móviles de TikTok de esta campaña a link de escritorio
+  async function convertirLinksCampana() {
+    if (!currentCamp) return
+    const pendientes = currentCamp.influencers.filter(i => isMobileTikTok(i.video_link_tt))
+    if (!pendientes.length) return alert('No hay links móviles de TikTok por convertir.')
+    if (!confirm(`Convertir ${pendientes.length} link(s) de TikTok a formato escritorio?`)) return
+    setConvirtiendo(true)
+    try {
+      const results = await convertMany(pendientes.map(i => i.video_link_tt))
+      let ok = 0
+      const fallidos = []
+      for (let k = 0; k < pendientes.length; k++) {
+        const inf = pendientes[k]
+        const r = results[k]
+        if (r.error || r.url === inf.video_link_tt) { fallidos.push(inf.nombre || inf.ig_usuario || inf.tt_usuario || '—'); continue }
+        await sql`UPDATE campaign_influencers SET video_link_tt = ${r.url} WHERE id = ${inf.ci_id}`
+        await sql`UPDATE posts SET url = ${r.url} WHERE campaign_id = ${currentCamp.id} AND influencer_id = ${inf.influencer_id} AND plataforma = 'TikTok' AND url = ${inf.video_link_tt}`
+        ok++
+      }
+      await fetchCamps()
+      alert(`Convertidos: ${ok}` + (fallidos.length ? `\nNo se pudieron convertir (quedan como estaban): ${fallidos.join(', ')}` : ''))
+    } catch (e) {
+      console.error(e)
+      alert('Error al convertir: ' + e.message)
+    } finally {
+      setConvirtiendo(false)
+    }
+  }
+
   async function saveEditCI() {
     try {
       const ttAnterior = editCI.video_link_tt
       const igAnterior = editCI.video_link_ig
+      // Antes de guardar: TikTok móvil -> escritorio, Instagram sin parámetros de seguimiento
+      if (isMobileTikTok(editCIForm.video_link_tt)) {
+        const r = await convertTikTok(editCIForm.video_link_tt)
+        if (r.error) alert('No se pudo convertir el link de TikTok (se guarda tal cual): ' + r.error)
+        editCIForm.video_link_tt = r.url
+      }
+      editCIForm.video_link_tt = (editCIForm.video_link_tt || '').trim()
+      editCIForm.video_link_ig = cleanInstagram(editCIForm.video_link_ig)
       await sql`
         UPDATE campaign_influencers SET
           costo = ${parseInt(editCIForm.costo) || 0},
@@ -1346,6 +1386,11 @@ export default function Campanas({ initialCamp = null }) {
                   <h2 style={{ fontSize: 14, fontWeight: 500 }}>Influencers en campaña</h2>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {!isMobile && <span style={{ fontSize: 12, color: '#AAA' }}>{currentCamp.influencers.length} seleccionados</span>}
+                    {showTT && !isReadOnly && currentCamp.influencers.some(i => isMobileTikTok(i.video_link_tt)) && (
+                      <button className="btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} disabled={convirtiendo} onClick={convertirLinksCampana}>
+                        {convirtiendo ? 'Convirtiendo…' : 'Convertir links'}
+                      </button>
+                    )}
                     {showTT && (
                       <button className="btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => {
                         const links = currentCamp.influencers.map(i => i.video_link_tt).filter(l => l && l.trim())
