@@ -12,6 +12,7 @@ import PagosGlobales from './components/PagosGlobales'
 import VistaCliente from './components/VistaCliente'
 import VistaReporte from './components/VistaReporte'
 import VistaClienteDashboard from './components/VistaClienteDashboard'
+import SocialBoost from './components/SocialBoost'
 import './index.css'
 
 function useIsMobile() {
@@ -90,6 +91,7 @@ export default function App() {
         {page === 'campanas'       && <Campanas initialCamp={campanaFromClient} />}
         {page === 'clientes'       && <Clientes onSelectCliente={handleSelectCliente} />}
         {page === 'servicios'      && <Servicios />}
+        {page === 'socialboost'    && <SocialBoost />}
         {page === 'pagos-globales' && <PagosGlobales onBack={() => handleSetPage('dashboard')} />}
         {page === 'cliente-detail' && selectedClient && (
           <ClienteDashboard
