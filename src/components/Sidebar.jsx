@@ -32,6 +32,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
     { id: 'clientes',  label: 'Clientes',  icon: '◍' },
     { id: 'campanas',  label: 'Campañas',  icon: '◎' },
     { id: 'servicios', label: 'Servicios', icon: '◐' },
+    { id: 'socialboost', label: 'Social Boost', icon: '♪' },
   ]
 
   // ─── MOBILE: barra inferior + menú deslizable ───
