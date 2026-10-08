@@ -528,6 +528,29 @@ function Config({ cuentas, onBack, onChanged }) {
   const [mes, setMes] = useState(firstOfMonth(ymd(new Date())))
   const [datos, setDatos] = useState(null) // [{ id, nombre, n }]
   const [clientes, setClientes] = useState([])
+  const [editores, setEditores] = useState([])
+  const [nombreEditor, setNombreEditor] = useState('Editora')
+
+  const cargarEditores = useCallback(async () => {
+    try { setEditores(await sql`SELECT id, nombre, token, activo FROM sb_editor_tokens ORDER BY created_at DESC`) } catch (e) { console.error(e) }
+  }, [])
+  useEffect(() => { cargarEditores() }, [cargarEditores])
+  const linkEditor = t => `${window.location.origin}/?editor=${t}`
+  async function crearEditor() {
+    const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+    try { await sql`INSERT INTO sb_editor_tokens (nombre, token) VALUES (${nombreEditor.trim() || 'Editora'}, ${token})`; cargarEditores() } catch (e) { alert(e.message) }
+  }
+  async function toggleEditor(e) {
+    try { await sql`UPDATE sb_editor_tokens SET activo = ${!e.activo} WHERE id = ${e.id}`; cargarEditores() } catch (err) { alert(err.message) }
+  }
+  async function borrarEditor(e) {
+    if (!confirm('¿Borrar este link? Dejará de funcionar para siempre.')) return
+    try { await sql`DELETE FROM sb_editor_tokens WHERE id = ${e.id}`; cargarEditores() } catch (err) { alert(err.message) }
+  }
+  function copiarLink(e) {
+    const url = linkEditor(e.token)
+    navigator.clipboard.writeText(url).then(() => alert('Link copiado')).catch(() => prompt('Copiá el link:', url))
+  }
 
   const cargarClientes = useCallback(async () => {
     try { setClientes(await sql`SELECT id, nombre, social_boost_activo FROM clients ORDER BY nombre`) } catch (e) { console.error(e) }
@@ -645,6 +668,30 @@ function Config({ cuentas, onBack, onChanged }) {
           </div>
         ))}
       </div>
+      {/* Link de la editora */}
+      <div style={{ marginTop: 24, marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>Link para la editora</div>
+        <div style={{ fontSize: 12, color: '#AAA' }}>Un link privado para subir videos, sin entrar al ROSTER. Quien lo tenga puede agregar links, así que compartilo solo con ella.</div>
+      </div>
+      <div className="card">
+        {editores.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay links.</div>}
+        {editores.map((e, i) => (
+          <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderTop: i ? '0.5px solid #F0F0EE' : 'none', opacity: e.activo ? 1 : 0.5, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <div style={{ fontSize: 13.5 }}>{e.nombre}</div>
+              <div style={{ fontSize: 11.5, color: '#AAA' }}>{e.activo ? 'Activo' : 'Desactivado'}</div>
+            </div>
+            <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => copiarLink(e)}>Copiar link</button>
+            <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => toggleEditor(e)}>{e.activo ? 'Desactivar' : 'Activar'}</button>
+            <button className="btn-icon btn-icon-danger" onClick={() => borrarEditor(e)}>✕</button>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 8, padding: '11px 14px', borderTop: editores.length ? '0.5px solid #F0F0EE' : 'none' }}>
+          <input className="input" value={nombreEditor} onChange={e => setNombreEditor(e.target.value)} placeholder="Nombre (ej. Editora)" style={{ flex: 1 }} />
+          <button className="btn-red" style={{ fontSize: 12 }} onClick={crearEditor}>＋ Crear link</button>
+        </div>
+      </div>
+
       {/* Portal del cliente */}
       <div style={{ marginTop: 24, marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 500 }}>Portal del cliente</div>
