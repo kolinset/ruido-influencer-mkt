@@ -20,6 +20,7 @@ function normalizeSolicitante(raw) {
   return found ? found.canonical : raw.trim()
 }
 import sql from '../lib/db'
+import VistaSocialBoost from './VistaSocialBoost'
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
@@ -198,6 +199,7 @@ export default function VistaClienteDashboard({ token }) {
   const [filterSolicitante, setFilterSolicitante] = useState('')
   const [sortOrder, setSortOrder] = useState('reciente')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [tab, setTab] = useState('campanas')
 
   useEffect(() => { if (token) fetchData(token) }, [token])
 
@@ -205,7 +207,7 @@ export default function VistaClienteDashboard({ token }) {
     setLoading(true)
     try {
       const tokenData = await sql`
-        SELECT ct.*, c.nombre AS client_nombre, c.color, c.slug
+        SELECT ct.*, c.nombre AS client_nombre, c.color, c.slug, c.social_boost_activo
         FROM client_tokens ct
         JOIN clients c ON c.id = ct.client_id
         WHERE ct.token = ${t} AND ct.activo = true
@@ -650,16 +652,35 @@ export default function VistaClienteDashboard({ token }) {
             <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.client_nombre}</h1>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, auto)', gap: isMobile ? '14px 8px' : 32, width: isMobile ? '100%' : 'fit-content' }}>
+        {client.social_boost_activo && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+            {[['campanas', 'Campañas'], ['socialboost', 'Social Boost']].map(([id, label]) => (
+              <button key={id} onClick={() => setTab(id)} style={{
+                padding: '7px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                background: tab === id ? '#fff' : 'transparent', color: tab === id ? '#111' : 'rgba(255,255,255,0.6)',
+                border: '0.5px solid ' + (tab === id ? '#fff' : 'rgba(255,255,255,0.25)'),
+              }}>{label}</button>
+            ))}
+          </div>
+        )}
+        {tab === 'campanas' && <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, auto)', gap: isMobile ? '14px 8px' : 32, width: isMobile ? '100%' : 'fit-content' }}>
           {kpiList.map(({ label, value }) => (
             <div key={label}>
               <div style={{ fontSize: isMobile ? 9 : 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3, lineHeight: 1.3 }}>{label}</div>
               <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 500, color: '#fff' }}>{value}</div>
             </div>
           ))}
-        </div>
+        </div>}
       </div>
 
+      {tab === 'socialboost' && client.social_boost_activo ? (
+        <div style={{ padding: isMobile ? '18px 16px' : '28px 40px' }}>
+          <VistaSocialBoost isMobile={isMobile} />
+          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
+            Portal generado por KOLINSET — Influencer MKT
+          </div>
+        </div>
+      ) : (
       <div style={{ padding: isMobile ? '18px 16px' : '28px 40px' }}>
         {isMobile ? (
           <div style={{ marginBottom: 16 }}>
@@ -876,6 +897,7 @@ export default function VistaClienteDashboard({ token }) {
           Portal generado por KOLINSET — Influencer MKT
         </div>
       </div>
+      )}
     </div>
   )
 }
