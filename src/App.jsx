@@ -12,6 +12,7 @@ import PagosGlobales from './components/PagosGlobales'
 import VistaCliente from './components/VistaCliente'
 import VistaReporte from './components/VistaReporte'
 import VistaClienteDashboard from './components/VistaClienteDashboard'
+import VistaEditor from './components/VistaEditor'
 import SocialBoost from './components/SocialBoost'
 import './index.css'
 
@@ -34,6 +35,7 @@ export default function App() {
   const [publicToken, setPublicToken] = useState(null)
   const [reportToken, setReportToken] = useState(null)
   const [clientDashboardToken, setClientDashboardToken] = useState(null)
+  const [editorToken, setEditorToken] = useState(null)
   const [selectedClient, setSelectedClient] = useState(null)
   const [campanaFromClient, setCampanaFromClient] = useState(null)
 
@@ -42,9 +44,11 @@ export default function App() {
     const token = params.get('token')
     const report = params.get('report')
     const clientDash = params.get('clientDashboard')
+    const editor = params.get('editor')
     if (token) { setPublicToken(token); return }
     if (report) { setReportToken(report); return }
     if (clientDash) { setClientDashboardToken(clientDash); return }
+    if (editor) { setEditorToken(editor); return }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuth(!!session)
@@ -79,6 +83,7 @@ export default function App() {
   if (publicToken) return <VistaCliente token={publicToken} />
   if (reportToken) return <VistaReporte token={reportToken} />
   if (clientDashboardToken) return <VistaClienteDashboard token={clientDashboardToken} />
+  if (editorToken) return <VistaEditor token={editorToken} />
 
   if (!auth) return <Login onLogin={() => setAuth(true)} />
 
