@@ -527,6 +527,15 @@ function Config({ cuentas, onBack, onChanged }) {
   const [form, setForm] = useState({ nombre: '', handle: '' })
   const [mes, setMes] = useState(firstOfMonth(ymd(new Date())))
   const [datos, setDatos] = useState(null) // [{ id, nombre, n }]
+  const [clientes, setClientes] = useState([])
+
+  const cargarClientes = useCallback(async () => {
+    try { setClientes(await sql`SELECT id, nombre, social_boost_activo FROM clients ORDER BY nombre`) } catch (e) { console.error(e) }
+  }, [])
+  useEffect(() => { cargarClientes() }, [cargarClientes])
+  async function toggleCliente(c) {
+    try { await sql`UPDATE clients SET social_boost_activo = ${!c.social_boost_activo} WHERE id = ${c.id}`; cargarClientes() } catch (e) { alert(e.message) }
+  }
 
   useEffect(() => {
     (async () => {
@@ -636,6 +645,25 @@ function Config({ cuentas, onBack, onChanged }) {
           </div>
         ))}
       </div>
+      {/* Portal del cliente */}
+      <div style={{ marginTop: 24, marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>Portal del cliente</div>
+        <div style={{ fontSize: 12, color: '#AAA' }}>Los clientes activados ven una pestaña "Social Boost" (solo lectura) en su portal</div>
+      </div>
+      <div className="card">
+        {clientes.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: '#AAA', fontSize: 13 }}>No hay clientes.</div>}
+        {clientes.map((c, i) => (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderTop: i ? '0.5px solid #F0F0EE' : 'none' }}>
+            <div style={{ flex: 1, fontSize: 13.5 }}>{c.nombre}</div>
+            <button onClick={() => toggleCliente(c)} style={{
+              fontSize: 12, padding: '4px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
+              background: c.social_boost_activo ? '#EAF3DE' : '#fff', color: c.social_boost_activo ? '#27500A' : '#888',
+              border: '0.5px solid ' + (c.social_boost_activo ? 'transparent' : '#D0D0CC'),
+            }}>{c.social_boost_activo ? 'Visible ✓' : 'Oculto'}</button>
+          </div>
+        ))}
+      </div>
+
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.c ? 'Editar cuenta' : 'Nueva cuenta'}>
         <div className="fg"><label className="label">Nombre / temática</label>
           <input className="input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Anime" /></div>
