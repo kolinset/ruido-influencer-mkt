@@ -31,6 +31,12 @@ function parseVideo(link) {
 
 const MAX_MES = 120
 
+// Quién del equipo del cliente pidió la canción (mismos nombres que en Campañas)
+const SOLICITANTES = ['Valeria Moraga', 'Gabriela Albarracín', 'Dominique De Solminihac', 'Juan Pablo Jiménez']
+const primerNombre = n => (n || '').split(' ')[0]
+
+// (La "cuenta efectiva" de un video = la asignada a mano o la que coincide con el usuario del link; se calcula en SQL.)
+
 // ═════════════════════════ DASHBOARD ═════════════════════════
 export default function SocialBoost() {
   const [inicio, setInicio] = useState(mondayOf(ymd(new Date())))
@@ -45,14 +51,14 @@ export default function SocialBoost() {
   const [filtro, setFiltro] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalSlot, setModalSlot] = useState(null) // número de slot a llenar
-  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', cuenta_id: '' })
+  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', solicitante: '' })
 
   const mesSemana = firstOfMonth(inicio)
   const prevInicio = addDays(inicio, -7)
   const esActual = inicio === mondayOf(ymd(new Date()))
 
   const SLOT_SQL = (semId) => sql`
-    SELECT ss.id AS ss_id, ss.slot, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.mes::text AS mes,
+    SELECT ss.id AS ss_id, ss.slot, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.solicitante, c.mes::text AS mes,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
     FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
@@ -71,7 +77,7 @@ export default function SocialBoost() {
       const kSem = sem ? await sql`SELECT count(*)::int AS n FROM sb_videos WHERE semana_id = ${sem.id}` : [{ n: 0 }]
       setKpi({ mes: kMes[0].n, semana: kSem[0].n })
       setUltimos(await sql`SELECT v.id, v.link_web, v.link_original, v.handle, v.created_at, c.id AS cancion_id, c.cancion, cu.nombre AS cuenta_nombre
-        FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id LEFT JOIN sb_cuentas cu ON cu.id = v.cuenta_id
+        FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
         ORDER BY v.created_at DESC LIMIT 40`)
     } catch (e) { console.error(e); alert('Error cargando Social Boost: ' + e.message) }
     setLoading(false)
@@ -95,8 +101,8 @@ export default function SocialBoost() {
     if (!form.cancion.trim()) return alert('Falta el nombre de la canción')
     try {
       const semId = await asegurarSemana()
-      const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}) RETURNING id`
-      await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, cuenta_id) VALUES (${semId}, ${modalSlot}, ${c[0].id}, ${form.cuenta_id || null})`
+      const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}, ${form.solicitante}) RETURNING id`
+      await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id) VALUES (${semId}, ${modalSlot}, ${c[0].id})`
       setModalSlot(null); cargar()
     } catch (e) { alert('No se pudo guardar: ' + e.message) }
   }
@@ -115,10 +121,10 @@ export default function SocialBoost() {
         let cancionId = p.cancion_id
         if (p.mes !== mesSemana) {
           // Cambió el mes: ficha nueva (el Tokchart es mensual)
-          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '') RETURNING id`
+          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '', ${p.solicitante || ''}) RETURNING id`
           cancionId = c[0].id
         }
-        await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, cuenta_id) VALUES (${semId}, ${slot}, ${cancionId}, ${p.cuenta_id || null})`
+        await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id) VALUES (${semId}, ${slot}, ${cancionId})`
         usados.add(slot); copiadas++
         slotPreferido = null
       }
@@ -192,7 +198,7 @@ export default function SocialBoost() {
                 return (
                   <div key={n} className="card" style={{ borderStyle: 'dashed', background: 'transparent', minHeight: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#AAA' }}>
                     <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' }}>Slot {n}</div>
-                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', cuenta_id: '' }); setModalSlot(n) }}>＋ Agregar canción</button>
+                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', solicitante: '' }); setModalSlot(n) }}>＋ Agregar canción</button>
                     {disponiblesPrev.length > 0 && (
                       <select className="input" style={{ fontSize: 12, maxWidth: 170 }} value=""
                         onChange={e => { const p = prevSlots.find(x => x.cancion_id === e.target.value); if (p) copiar([p], n) }}>
@@ -213,6 +219,7 @@ export default function SocialBoost() {
                     <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {n}</div>
                     <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
                     <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
+                    {s.solicitante && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 8px' }}>Pidió {primerNombre(s.solicitante)}</div>}
                   </div>
                   <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'baseline', gap: 6 }}>
                     <div style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-.02em' }}>{s.vids_sem}</div>
@@ -284,10 +291,10 @@ export default function SocialBoost() {
           <input className="input" value={form.artista} onChange={e => setForm(f => ({ ...f, artista: e.target.value }))} /></div>
         <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
           <input className="input" value={form.tokchart_url} onChange={e => setForm(f => ({ ...f, tokchart_url: e.target.value }))} placeholder="https://…" /></div>
-        <div className="fg"><label className="label">Cuenta de esta canción (opcional)</label>
-          <select className="input" value={form.cuenta_id} onChange={e => setForm(f => ({ ...f, cuenta_id: e.target.value }))}>
-            <option value="">Sin asignar</option>
-            {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
+        <div className="fg"><label className="label">Solicitada por</label>
+          <select className="input" value={form.solicitante} onChange={e => setForm(f => ({ ...f, solicitante: e.target.value }))}>
+            <option value="">Sin indicar</option>
+            {SOLICITANTES.map(n => <option key={n} value={n}>{n}</option>)}
           </select></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setModalSlot(null)}>Cancelar</button>
@@ -305,14 +312,14 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   const [modalAdd, setModalAdd] = useState(false)
   const [modalEdit, setModalEdit] = useState(false)
   const [texto, setTexto] = useState('')
-  const [cuentaId, setCuentaId] = useState(slot.cuenta_id || '')
+  const [cuentaId, setCuentaId] = useState('')
   const [formEdit, setFormEdit] = useState({})
   const [busy, setBusy] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
-      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.cuenta_id, v.created_at, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
-        FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id LEFT JOIN sb_cuentas cu ON cu.id = v.cuenta_id
+      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.cuenta_id AS cuenta_manual, cu.id AS cuenta_id, v.created_at, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
+        FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
         WHERE v.cancion_id = ${slot.cancion_id} ORDER BY v.created_at DESC, v.id`)
     } catch (e) { console.error(e) }
   }, [slot.cancion_id])
@@ -384,15 +391,14 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   }
 
   function abrirEditar() {
-    setFormEdit({ cancion: info.cancion, artista: info.artista || '', tokchart_url: info.tokchart_url || '', notas: info.notas || '', cuenta_id: info.cuenta_id || '' })
+    setFormEdit({ cancion: info.cancion, artista: info.artista || '', tokchart_url: info.tokchart_url || '', notas: info.notas || '', solicitante: info.solicitante || '' })
     setModalEdit(true)
   }
   async function guardarEditar() {
     if (!formEdit.cancion.trim()) return alert('Falta el nombre')
     try {
-      await sql`UPDATE sb_canciones SET cancion=${formEdit.cancion.trim()}, artista=${formEdit.artista}, tokchart_url=${formEdit.tokchart_url.trim()}, notas=${formEdit.notas} WHERE id=${slot.cancion_id}`
-      await sql`UPDATE sb_semana_slots SET cuenta_id=${formEdit.cuenta_id || null} WHERE id=${slot.ss_id}`
-      setInfo(i => ({ ...i, ...formEdit, cuenta_id: formEdit.cuenta_id || null }))
+      await sql`UPDATE sb_canciones SET cancion=${formEdit.cancion.trim()}, artista=${formEdit.artista}, tokchart_url=${formEdit.tokchart_url.trim()}, notas=${formEdit.notas}, solicitante=${formEdit.solicitante || ''} WHERE id=${slot.cancion_id}`
+      setInfo(i => ({ ...i, ...formEdit }))
       setModalEdit(false); onChanged()
     } catch (e) { alert(e.message) }
   }
@@ -402,7 +408,6 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   }
 
   const pendientes = videos.filter(v => !v.link_web || isMobileTikTok(v.link_web)).length
-  const cuentaSlot = cuentas.find(c => c.id === info.cuenta_id)
   const deSemana = videos.filter(v => v.semana_inicio === inicio).length
 
   return (
@@ -414,7 +419,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
           <div>
             <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {info.slot}</div>
             <div style={{ fontSize: 20, fontWeight: 500, marginTop: 2 }}>{info.cancion}</div>
-            <div style={{ fontSize: 12.5, color: '#888' }}>{info.artista || '—'}{cuentaSlot ? ` · Cuenta: ${cuentaSlot.nombre}${cuentaSlot.handle ? ' ' + cuentaSlot.handle : ''}` : ''}</div>
+            <div style={{ fontSize: 12.5, color: '#888' }}>{info.artista || '—'}{info.solicitante ? ` · Solicitada por ${info.solicitante}` : ''}</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {info.tokchart_url
@@ -453,11 +458,13 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
                   <td className="td" style={{ color: '#AAA' }}>{videos.length - i}</td>
                   <td className="td" style={{ color: '#888' }}>{v.semana_inicio ? rangoSemana(v.semana_inicio) : '—'}</td>
                   <td className="td">
-                    {v.handle ? '@' + v.handle : (
-                      <select className="input" style={{ fontSize: 12, padding: '4px 6px', width: 130, borderColor: v.cuenta_id ? undefined : '#E8313A' }}
-                        value={v.cuenta_id || ''} onChange={e => asignarCuenta(v, e.target.value)}>
+                    {v.handle ? (
+                      <span>@{v.handle}{v.cuenta_nombre && <span style={{ marginLeft: 6, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 7px' }}>{v.cuenta_nombre}</span>}</span>
+                    ) : (
+                      <select className="input" style={{ fontSize: 12, padding: '4px 6px', width: 150, borderColor: v.cuenta_manual ? undefined : '#E8313A' }}
+                        value={v.cuenta_manual || ''} onChange={e => asignarCuenta(v, e.target.value)}>
                         <option value="">¿Qué cuenta?</option>
-                        {cuentas.filter(c => c.activa || c.id === v.cuenta_id).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        {cuentas.filter(c => c.activa || c.id === v.cuenta_manual).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                       </select>
                     )}
                   </td>
@@ -476,12 +483,12 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
       <Modal open={modalAdd} onClose={() => !busy && setModalAdd(false)} title="Agregar videos">
         <div className="fg"><label className="label">Links de TikTok (uno por línea; móviles o de escritorio)</label>
           <textarea className="input" rows={8} value={texto} onChange={e => setTexto(e.target.value)} placeholder={'https://vt.tiktok.com/…\nhttps://vt.tiktok.com/…'} /></div>
-        <div className="fg"><label className="label">Cuenta (solo si el link no muestra el usuario)</label>
+        <div className="fg"><label className="label">Cuenta de TikTok (solo si el link no muestra el usuario)</label>
           <select className="input" value={cuentaId} onChange={e => setCuentaId(e.target.value)}>
             <option value="">Sin asignar</option>
-            {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
+            {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre}{c.handle ? ' · ' + c.handle : ''}</option>)}
           </select>
-          <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>El usuario se detecta solo desde el link. Esta cuenta se usa únicamente cuando no se puede detectar.</div>
+          <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>El usuario y la cuenta se detectan solos desde el link. Esto se usa únicamente cuando no se puede detectar.</div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" disabled={busy} onClick={() => setModalAdd(false)}>Cancelar</button>
@@ -496,10 +503,10 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
           <input className="input" value={formEdit.artista || ''} onChange={e => setFormEdit(f => ({ ...f, artista: e.target.value }))} /></div>
         <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
           <input className="input" value={formEdit.tokchart_url || ''} onChange={e => setFormEdit(f => ({ ...f, tokchart_url: e.target.value }))} /></div>
-        <div className="fg"><label className="label">Cuenta de esta canción</label>
-          <select className="input" value={formEdit.cuenta_id || ''} onChange={e => setFormEdit(f => ({ ...f, cuenta_id: e.target.value }))}>
-            <option value="">Sin asignar</option>
-            {cuentas.filter(c => c.activa || c.id === info.cuenta_id).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
+        <div className="fg"><label className="label">Solicitada por</label>
+          <select className="input" value={formEdit.solicitante || ''} onChange={e => setFormEdit(f => ({ ...f, solicitante: e.target.value }))}>
+            <option value="">Sin indicar</option>
+            {SOLICITANTES.map(n => <option key={n} value={n}>{n}</option>)}
           </select></div>
         <div className="fg"><label className="label">Notas</label>
           <textarea className="input" rows={2} value={formEdit.notas || ''} onChange={e => setFormEdit(f => ({ ...f, notas: e.target.value }))} /></div>
@@ -512,20 +519,36 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   )
 }
 
-// ═════════════════════════ CONFIGURACIÓN (cuentas) ═════════════════════════
+// ═════════════════════════ CONFIGURACIÓN (cuentas + gráfico) ═════════════════════════
+const COLORES_CUENTA = ['#E8313A', '#3B5BDB', '#1D9E75', '#BA7517', '#7C3AED', '#0369A1', '#C2185B']
+
 function Config({ cuentas, onBack, onChanged }) {
   const [modal, setModal] = useState(null)
-  const [form, setForm] = useState({ nombre: '', handle: '', notas: '' })
+  const [form, setForm] = useState({ nombre: '', handle: '' })
+  const [mes, setMes] = useState(firstOfMonth(ymd(new Date())))
+  const [datos, setDatos] = useState(null) // [{ id, nombre, n }]
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await sql`SELECT cu.id, cu.nombre, count(*)::int AS n
+          FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id
+          LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
+          WHERE c.mes = ${mes} GROUP BY cu.id, cu.nombre`
+        setDatos(rows)
+      } catch (e) { console.error(e); setDatos([]) }
+    })()
+  }, [mes, cuentas])
 
   function abrir(c) {
-    setForm(c ? { nombre: c.nombre, handle: c.handle || '', notas: c.notas || '' } : { nombre: '', handle: '', notas: '' })
+    setForm(c ? { nombre: c.nombre, handle: c.handle || '' } : { nombre: '', handle: '' })
     setModal({ c })
   }
   async function guardar() {
-    if (!form.nombre.trim()) return alert('Falta el nombre')
+    if (!form.nombre.trim()) return alert('Falta el nombre / temática')
     try {
-      if (modal.c) await sql`UPDATE sb_cuentas SET nombre=${form.nombre.trim()}, handle=${form.handle.trim()}, notas=${form.notas} WHERE id=${modal.c.id}`
-      else await sql`INSERT INTO sb_cuentas (nombre, handle, notas) VALUES (${form.nombre.trim()}, ${form.handle.trim()}, ${form.notas})`
+      if (modal.c) await sql`UPDATE sb_cuentas SET nombre=${form.nombre.trim()}, handle=${form.handle.trim()} WHERE id=${modal.c.id}`
+      else await sql`INSERT INTO sb_cuentas (nombre, handle, notas) VALUES (${form.nombre.trim()}, ${form.handle.trim()}, '')`
       setModal(null); onChanged()
     } catch (e) { alert(e.message) }
   }
@@ -533,13 +556,70 @@ function Config({ cuentas, onBack, onChanged }) {
     try { await sql`UPDATE sb_cuentas SET activa = ${!c.activa} WHERE id = ${c.id}`; onChanged() } catch (e) { alert(e.message) }
   }
 
+  // Barras: una por cuenta (aunque tenga 0) + "Sin identificar" si hay videos sin cuenta
+  const total = (datos || []).reduce((a, d) => a + d.n, 0)
+  const filas = cuentas.filter(c => c.activa || (datos || []).some(d => d.id === c.id)).map((c, i) => ({
+    key: c.id, nombre: c.nombre, handle: c.handle, color: COLORES_CUENTA[i % COLORES_CUENTA.length],
+    n: (datos || []).find(d => d.id === c.id)?.n || 0,
+  }))
+  const sinId = (datos || []).find(d => !d.id)?.n || 0
+  if (sinId) filas.push({ key: 'sin', nombre: 'Sin identificar', handle: '', color: '#CFCFCB', n: sinId })
+  const mesDate = parseYmd(mes)
+  const mesTxt = `${MESES[mesDate.getMonth()]} ${mesDate.getFullYear()}`
+  const mover = n => { const d = parseYmd(mes); d.setMonth(d.getMonth() + n); setMes(firstOfMonth(ymd(d))) }
+
   return (
-    <div style={{ padding: '28px 28px', maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ padding: '28px 28px', maxWidth: 820, margin: '0 auto' }}>
       <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={onBack}>← Volver</button>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 14 }}>Configuración</h1>
+
+      {/* Gráfico */}
+      <div className="card" style={{ padding: 18, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Videos por cuenta de TikTok</div>
+            <div style={{ fontSize: 12, color: '#999' }}>{total} video{total === 1 ? '' : 's'} en {mesTxt}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-ghost" onClick={() => mover(-1)}>←</button>
+            <div style={{ fontSize: 13, fontWeight: 500, minWidth: 110, textAlign: 'center' }}>{mesTxt}</div>
+            <button className="btn-ghost" onClick={() => mover(1)}>→</button>
+          </div>
+        </div>
+        {datos === null ? <div style={{ color: '#AAA', fontSize: 13 }}>Cargando…</div> : total === 0 ? (
+          <div style={{ padding: '20px 0', textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay videos en este mes.</div>
+        ) : (
+          <>
+            {/* Barra apilada con el reparto total */}
+            <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', background: '#F0F0EE', marginBottom: 16 }}>
+              {filas.filter(f => f.n > 0).map(f => <div key={f.key} title={`${f.nombre}: ${f.n}`} style={{ width: (f.n / total * 100) + '%', background: f.color }} />)}
+            </div>
+            {filas.map(f => {
+              const pct = total ? Math.round(f.n / total * 100) : 0
+              return (
+                <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0' }}>
+                  <div style={{ width: 9, height: 9, borderRadius: 3, background: f.color, flexShrink: 0 }} />
+                  <div style={{ width: 170, fontSize: 13, minWidth: 0 }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</div>
+                    {f.handle && <div style={{ fontSize: 11, color: '#AAA' }}>{f.handle}</div>}
+                  </div>
+                  <div style={{ flex: 1, height: 8, background: '#F0F0EE', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: pct + '%', height: '100%', background: f.color, borderRadius: 4 }} />
+                  </div>
+                  <div style={{ width: 96, textAlign: 'right', fontSize: 13 }}><b style={{ fontWeight: 500 }}>{pct}%</b> <span style={{ color: '#999', fontSize: 12 }}>· {f.n}</span></div>
+                </div>
+              )
+            })}
+            {sinId > 0 && <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 8 }}>"Sin identificar": videos cuyo usuario no coincide con ninguna cuenta. Cargá el usuario de TikTok de cada cuenta abajo.</div>}
+          </>
+        )}
+      </div>
+
+      {/* Cuentas */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500 }}>Configuración</h1>
-          <div style={{ fontSize: 12, color: '#AAA' }}>Cuentas de TikTok de los community managers</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Cuentas de TikTok</div>
+          <div style={{ fontSize: 12, color: '#AAA' }}>Cada cuenta tiene su temática; el usuario sirve para reconocerla desde los links</div>
         </div>
         <button className="btn-red" style={{ fontSize: 12 }} onClick={() => abrir(null)}>＋ Nueva cuenta</button>
       </div>
@@ -549,7 +629,7 @@ function Config({ cuentas, onBack, onChanged }) {
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderTop: i ? '0.5px solid #F0F0EE' : 'none', opacity: c.activa ? 1 : 0.5 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5 }}>{c.nombre}</div>
-              <div style={{ fontSize: 11.5, color: '#AAA' }}>{c.handle || 'sin usuario'}</div>
+              <div style={{ fontSize: 11.5, color: c.handle ? '#AAA' : '#C0392B' }}>{c.handle || 'falta el usuario de TikTok'}</div>
             </div>
             <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => abrir(c)}>Editar</button>
             <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => toggle(c)}>{c.activa ? 'Desactivar' : 'Activar'}</button>
@@ -557,12 +637,10 @@ function Config({ cuentas, onBack, onChanged }) {
         ))}
       </div>
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.c ? 'Editar cuenta' : 'Nueva cuenta'}>
-        <div className="fg"><label className="label">Nombre (community manager)</label>
-          <input className="input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} /></div>
-        <div className="fg"><label className="label">Usuario TikTok</label>
+        <div className="fg"><label className="label">Nombre / temática</label>
+          <input className="input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Anime" /></div>
+        <div className="fg"><label className="label">Usuario de TikTok</label>
           <input className="input" value={form.handle} onChange={e => setForm(f => ({ ...f, handle: e.target.value }))} placeholder="@usuario" /></div>
-        <div className="fg"><label className="label">Notas</label>
-          <textarea className="input" rows={2} value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} /></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
           <button className="btn-red" onClick={guardar}>Guardar</button>
