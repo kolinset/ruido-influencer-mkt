@@ -3,440 +3,517 @@ import sql from '../lib/db'
 import Modal from './Modal'
 import { convertMany, isMobileTikTok } from '../lib/links'
 
-// ───────── helpers de fecha (todo como texto YYYY-MM-DD, sin husos horarios) ─────────
+// ───────── fechas (siempre texto YYYY-MM-DD, sin husos horarios) ─────────
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const pad = n => String(n).padStart(2, '0')
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
-const firstOfMonth = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
-function mondayOf(s) {
-  const d = parseYmd(s)
-  const dow = (d.getDay() + 6) % 7
-  d.setDate(d.getDate() - dow)
-  return ymd(d)
-}
+const firstOfMonth = s => s.slice(0, 7) + '-01'
+function mondayOf(s) { const d = parseYmd(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d) }
 function addDays(s, n) { const d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d) }
-function mesLabel(s) { const d = parseYmd(s); return `${MESES[d.getMonth()]} ${d.getFullYear()}` }
-function shiftMes(s, n) { const d = parseYmd(s); d.setMonth(d.getMonth() + n); return firstOfMonth(d) }
-function semLabel(inicio) {
-  const a = parseYmd(inicio), b = parseYmd(addDays(inicio, 6))
-  return `${a.getDate()} ${MESES[a.getMonth()].slice(0, 3)} – ${b.getDate()} ${MESES[b.getMonth()].slice(0, 3)}`
+function tituloSemana(inicio) {
+  const d = parseYmd(inicio)
+  return `${MESES[d.getMonth()]} · Semana ${Math.ceil(d.getDate() / 7)}`
 }
-
+function rangoSemana(inicio) {
+  const a = parseYmd(inicio), b = parseYmd(addDays(inicio, 6))
+  return `${a.getDate()} ${MESES[a.getMonth()].slice(0, 3).toLowerCase()} – ${b.getDate()} ${MESES[b.getMonth()].slice(0, 3).toLowerCase()}`
+}
+function fechaHora(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
 function parseVideo(link) {
   const m = (link || '').match(/tiktok\.com\/@([^/?#]+)\/(?:video|photo)\/(\d+)/)
   return m ? { handle: m[1], video_id: m[2] } : { handle: '', video_id: '' }
 }
 
-const TIPOS_CONTENIDO = ['Lip sync', 'Trend', 'Storytelling', 'Meme', 'Behind the scenes', 'Baile', 'Otro']
+const MAX_MES = 120
 
-const DECISION_STYLE = {
-  mantener: { bg: '#EAF3DE', color: '#27500A', label: 'Mantener' },
-  cambiar:  { bg: '#FCEBEB', color: '#A32D2D', label: 'Cambiar' },
-}
-
+// ═════════════════════════ DASHBOARD ═════════════════════════
 export default function SocialBoost() {
-  const hoy = new Date()
-  const [mes, setMes] = useState(firstOfMonth(hoy))
-  const [tab, setTab] = useState('semana')
+  const [inicio, setInicio] = useState(mondayOf(ymd(new Date())))
+  const [vista, setVista] = useState('dashboard') // dashboard | config | cancion
+  const [cancionSel, setCancionSel] = useState(null) // slot abierto
   const [cuentas, setCuentas] = useState([])
-  const [canciones, setCanciones] = useState([])
-  const [semanas, setSemanas] = useState([])
+  const [semana, setSemana] = useState(null)
+  const [slots, setSlots] = useState([])
+  const [prevSlots, setPrevSlots] = useState([])
+  const [ultimos, setUltimos] = useState([])
+  const [kpi, setKpi] = useState({ mes: 0, semana: 0 })
+  const [filtro, setFiltro] = useState('')
   const [loading, setLoading] = useState(true)
-  const [songOpen, setSongOpen] = useState(null) // id de canción abierta
+  const [modalSlot, setModalSlot] = useState(null) // número de slot a llenar
+  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', cuenta_id: '' })
+
+  const mesSemana = firstOfMonth(inicio)
+  const prevInicio = addDays(inicio, -7)
+  const esActual = inicio === mondayOf(ymd(new Date()))
+
+  const SLOT_SQL = (semId) => sql`
+    SELECT ss.id AS ss_id, ss.slot, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.mes::text AS mes,
+      (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
+      (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
+    FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
+    WHERE ss.semana_id = ${semId} ORDER BY ss.slot`
 
   const cargar = useCallback(async () => {
     try {
-      const [c, s, w] = await Promise.all([
-        sql`SELECT id, nombre, handle, notas, activa FROM sb_cuentas ORDER BY nombre`,
-        sql`SELECT id, mes::text AS mes, artista, cancion, tokchart_url, slot, estado, notas
-            FROM sb_canciones WHERE mes = ${mes} ORDER BY slot NULLS LAST, created_at`,
-        sql`SELECT id, mes::text AS mes, inicio::text AS inicio, cerrada, conclusion, conclusion_publicada
-            FROM sb_semanas WHERE mes = ${mes} ORDER BY inicio`,
-      ])
-      setCuentas(c); setCanciones(s); setSemanas(w)
+      const cu = await sql`SELECT id, nombre, handle, notas, activa FROM sb_cuentas ORDER BY nombre`
+      setCuentas(cu)
+      const sem = (await sql`SELECT id, inicio::text AS inicio, mes::text AS mes FROM sb_semanas WHERE inicio = ${inicio}`)[0] || null
+      setSemana(sem)
+      setSlots(sem ? await SLOT_SQL(sem.id) : [])
+      const prev = (await sql`SELECT id FROM sb_semanas WHERE inicio = ${prevInicio}`)[0]
+      setPrevSlots(prev ? await SLOT_SQL(prev.id) : [])
+      const kMes = await sql`SELECT count(*)::int AS n FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id WHERE c.mes = ${mesSemana}`
+      const kSem = sem ? await sql`SELECT count(*)::int AS n FROM sb_videos WHERE semana_id = ${sem.id}` : [{ n: 0 }]
+      setKpi({ mes: kMes[0].n, semana: kSem[0].n })
+      setUltimos(await sql`SELECT v.id, v.link_web, v.link_original, v.handle, v.created_at, c.id AS cancion_id, c.cancion, cu.nombre AS cuenta_nombre
+        FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id LEFT JOIN sb_cuentas cu ON cu.id = v.cuenta_id
+        ORDER BY v.created_at DESC LIMIT 40`)
     } catch (e) { console.error(e); alert('Error cargando Social Boost: ' + e.message) }
     setLoading(false)
-  }, [mes])
+  }, [inicio])
 
   useEffect(() => { setLoading(true); cargar() }, [cargar])
 
-  const cancionAbierta = canciones.find(c => c.id === songOpen)
-
-  return (
-    <div style={{ padding: '24px 20px', maxWidth: 1000, margin: '0 auto' }}>
-      {cancionAbierta ? (
-        <CancionPage cancion={cancionAbierta} cuentas={cuentas}
-          onBack={() => { setSongOpen(null); cargar() }} onChanged={cargar} />
-      ) : (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-            <div>
-              <h1 style={{ fontSize: 18, fontWeight: 500 }}>Social Boost</h1>
-              <div style={{ fontSize: 12, color: '#AAA' }}>Cuentas de community managers · 5 canciones por semana</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button className="btn-ghost" onClick={() => setMes(shiftMes(mes, -1))}>←</button>
-              <div style={{ fontSize: 14, fontWeight: 500, minWidth: 130, textAlign: 'center' }}>{mesLabel(mes)}</div>
-              <button className="btn-ghost" onClick={() => setMes(shiftMes(mes, 1))}>→</button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: '#F0F0EE', padding: 3, borderRadius: 10, width: 'fit-content' }}>
-            {[['semana', 'Semana'], ['canciones', 'Canciones'], ['cuentas', 'Cuentas']].map(([id, label]) => (
-              <div key={id} onClick={() => setTab(id)} style={{
-                padding: '6px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
-                background: tab === id ? '#fff' : 'transparent',
-                color: tab === id ? '#1A1A1A' : '#888',
-                border: tab === id ? '0.5px solid #E5E5E2' : '0.5px solid transparent',
-              }}>{label}</div>
-            ))}
-          </div>
-
-          {loading ? <div style={{ color: '#AAA', fontSize: 13 }}>Cargando…</div> : (
-            <>
-              {tab === 'semana' && <TabSemana mes={mes} cuentas={cuentas} canciones={canciones} semanas={semanas} onChanged={cargar} />}
-              {tab === 'canciones' && <TabCanciones mes={mes} canciones={canciones} onOpen={setSongOpen} onChanged={cargar} />}
-              {tab === 'cuentas' && <TabCuentas cuentas={cuentas} onChanged={cargar} />}
-            </>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-// ═════════════════════════ CANCIONES (5 slots) ═════════════════════════
-function TabCanciones({ mes, canciones, onOpen, onChanged }) {
-  const [modal, setModal] = useState(null) // { slot, song? }
-  const [form, setForm] = useState({ artista: '', cancion: '', tokchart_url: '', notas: '' })
-  const activas = canciones.filter(c => c.estado === 'activa')
-  const salieron = canciones.filter(c => c.estado === 'salio')
-
-  function abrir(slot, song) {
-    setForm(song
-      ? { artista: song.artista || '', cancion: song.cancion, tokchart_url: song.tokchart_url || '', notas: song.notas || '' }
-      : { artista: '', cancion: '', tokchart_url: '', notas: '' })
-    setModal({ slot, song })
+  async function asegurarSemana() {
+    if (semana) return semana.id
+    await sql`INSERT INTO sb_semanas (mes, inicio) VALUES (${mesSemana}, ${inicio}) ON CONFLICT (inicio) DO NOTHING`
+    const r = await sql`SELECT id FROM sb_semanas WHERE inicio = ${inicio}`
+    return r[0].id
   }
 
-  async function guardar() {
+  function slotLibre(extra = []) {
+    const ocupados = new Set([...slots.map(s => s.slot), ...extra])
+    return [1, 2, 3, 4, 5].find(n => !ocupados.has(n))
+  }
+
+  async function guardarNueva() {
     if (!form.cancion.trim()) return alert('Falta el nombre de la canción')
     try {
-      if (modal.song) {
-        await sql`UPDATE sb_canciones SET artista=${form.artista}, cancion=${form.cancion.trim()}, tokchart_url=${form.tokchart_url.trim()}, notas=${form.notas} WHERE id=${modal.song.id}`
-      } else {
-        await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, slot, estado, notas)
-                  VALUES (${mes}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}, ${modal.slot}, 'activa', ${form.notas})`
-      }
-      setModal(null); onChanged()
+      const semId = await asegurarSemana()
+      const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}) RETURNING id`
+      await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, cuenta_id) VALUES (${semId}, ${modalSlot}, ${c[0].id}, ${form.cuenta_id || null})`
+      setModalSlot(null); cargar()
     } catch (e) { alert('No se pudo guardar: ' + e.message) }
   }
 
-  async function marcarSalio(song) {
-    if (!confirm(`"${song.cancion}" sale del plan este mes. Sus videos y datos quedan guardados. ¿Seguro?`)) return
+  // Copia canciones de la semana pasada a esta (los slots libres)
+  async function copiar(lista, slotPreferido) {
     try {
-      await sql`UPDATE sb_canciones SET estado='salio', slot=NULL WHERE id=${song.id}`
-      onChanged()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function reactivar(song) {
-    const ocupados = new Set(activas.map(c => c.slot))
-    const libre = [1, 2, 3, 4, 5].find(s => !ocupados.has(s))
-    if (!libre) return alert('Los 5 slots están ocupados. Sacá una canción primero.')
-    try {
-      await sql`UPDATE sb_canciones SET estado='activa', slot=${libre} WHERE id=${song.id}`
-      onChanged()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function copiarMesAnterior() {
-    const prev = shiftMes(mes, -1)
-    try {
-      const rows = await sql`SELECT artista, cancion, tokchart_url FROM sb_canciones WHERE mes=${prev} AND estado='activa' ORDER BY slot`
-      if (!rows.length) return alert('El mes anterior no tiene canciones activas.')
-      if (!confirm(`Traer ${rows.length} canción(es) activas de ${mesLabel(prev)}? Empiezan con videos en cero y necesitan su link de Tokchart nuevo.`)) return
-      const ocupados = new Set(activas.map(c => c.slot))
-      const libres = [1, 2, 3, 4, 5].filter(s => !ocupados.has(s))
-      for (let i = 0; i < Math.min(rows.length, libres.length); i++) {
-        await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, slot, estado) VALUES (${mes}, ${rows[i].artista}, ${rows[i].cancion}, '', ${libres[i]}, 'activa')`
+      const semId = await asegurarSemana()
+      const usados = new Set(slots.map(s => s.slot))
+      const nombres = new Set(slots.map(s => `${s.cancion}|${s.artista}`))
+      let copiadas = 0
+      for (const p of lista) {
+        if (nombres.has(`${p.cancion}|${p.artista}`)) continue
+        let slot = slotPreferido && !usados.has(slotPreferido) ? slotPreferido : [1, 2, 3, 4, 5].find(n => !usados.has(n))
+        if (!slot) break
+        let cancionId = p.cancion_id
+        if (p.mes !== mesSemana) {
+          // Cambió el mes: ficha nueva (el Tokchart es mensual)
+          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '') RETURNING id`
+          cancionId = c[0].id
+        }
+        await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, cuenta_id) VALUES (${semId}, ${slot}, ${cancionId}, ${p.cuenta_id || null})`
+        usados.add(slot); copiadas++
+        slotPreferido = null
       }
-      onChanged()
-    } catch (e) { alert(e.message) }
+      if (!copiadas) alert('No había nada nuevo para copiar (o no quedan slots libres).')
+      cargar()
+    } catch (e) { alert('No se pudo copiar: ' + e.message) }
+  }
+
+  const sel = cancionSel != null ? slots.find(s => s.slot === cancionSel) : null
+  const disponiblesPrev = prevSlots.filter(p => !slots.some(s => `${s.cancion}|${s.artista}` === `${p.cancion}|${p.artista}`))
+  const ultimosVis = (filtro ? ultimos.filter(u => u.cancion_id === filtro) : ultimos).slice(0, 15)
+
+  if (vista === 'cancion' && sel) {
+    return <CancionPage slot={sel} semanaId={semana?.id} inicio={inicio} cuentas={cuentas}
+      onBack={() => { setVista('dashboard'); cargar() }} onChanged={cargar} />
+  }
+  if (vista === 'config') {
+    return <Config cuentas={cuentas} onBack={() => { setVista('dashboard'); cargar() }} onChanged={cargar} />
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ fontSize: 12, color: '#888' }}>{activas.length} de 5 slots ocupados</div>
-        {activas.length === 0 && <button className="btn-ghost" style={{ fontSize: 12 }} onClick={copiarMesAnterior}>Traer del mes anterior</button>}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-        {[1, 2, 3, 4, 5].map(slot => {
-          const s = activas.find(c => c.slot === slot)
-          return s ? (
-            <div key={slot} className="card" style={{ padding: 14 }}>
-              <div style={{ fontSize: 10, color: '#AAA', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Slot {slot}</div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{s.cancion}</div>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>{s.artista || '—'}</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button className="btn-red" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => onOpen(s.id)}>Abrir</button>
-                <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => abrir(slot, s)}>Editar</button>
-                <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => marcarSalio(s)}>Salió</button>
+    <div style={{ padding: '28px 28px', maxWidth: 1240, margin: '0 auto' }}>
+      {/* Encabezado */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-.01em' }}>{tituloSemana(inicio)}</h1>
+          <div style={{ fontSize: 12.5, color: '#999', marginTop: 4 }}>{rangoSemana(inicio)}{esActual ? ' · en curso' : ''}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn-ghost" onClick={() => setInicio(addDays(inicio, -7))}>←</button>
+            <button className="btn-ghost" style={{ fontWeight: 500 }} onClick={() => setInicio(mondayOf(ymd(new Date())))}>Esta semana</button>
+            <button className="btn-ghost" onClick={() => setInicio(addDays(inicio, 7))}>→</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div className="card" style={{ padding: '12px 14px', width: 320, maxWidth: '100%' }}>
+            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA', marginBottom: 8 }}>Semana anterior · canciones usadas</div>
+            {prevSlots.length === 0 ? <div style={{ fontSize: 12, color: '#BBB' }}>Sin datos</div> : (
+              <div>
+                {prevSlots.map(p => (
+                  <span key={p.ss_id} style={{ display: 'inline-block', background: '#F1EFE8', borderRadius: 6, padding: '3px 8px', fontSize: 11.5, margin: '0 4px 4px 0', color: '#444' }}>
+                    {p.cancion} <span style={{ color: '#999' }}>{p.vids_sem}</span>
+                  </span>
+                ))}
+                {disponiblesPrev.length > 0 && slotLibre() && (
+                  <div><button className="btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 4 }} onClick={() => copiar(disponiblesPrev)}>Copiar todas a esta semana</button></div>
+                )}
               </div>
-            </div>
-          ) : (
-            <div key={slot} onClick={() => abrir(slot, null)} className="card" style={{
-              padding: 14, cursor: 'pointer', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', minHeight: 110, color: '#AAA', borderStyle: 'dashed',
-            }}>
-              <div style={{ fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Slot {slot}</div>
-              <div style={{ fontSize: 13 }}>＋ Agregar canción</div>
-            </div>
-          )
-        })}
+            )}
+          </div>
+          <button className="btn-ghost" title="Configuración" style={{ width: 36, height: 36, padding: 0, fontSize: 16 }} onClick={() => setVista('config')}>⚙</button>
+        </div>
       </div>
 
-      {salieron.length > 0 && (
-        <div style={{ marginTop: 22 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Salieron este mes</div>
-          <div className="card">
-            {salieron.map((s, i) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: i ? '0.5px solid #F0F0EE' : 'none' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13 }}>{s.cancion}</div>
-                  <div style={{ fontSize: 11, color: '#AAA' }}>{s.artista || '—'}</div>
-                </div>
-                <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => onOpen(s.id)}>Ver</button>
-                <button className="btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => reactivar(s)}>Reactivar</button>
+      {loading ? <div style={{ color: '#AAA', fontSize: 13 }}>Cargando…</div> : (
+        <>
+          {/* Números rápidos */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+            {[[`${kpi.mes}`, `/ ${MAX_MES}`, 'videos en el mes'], [`${kpi.semana}`, '', 'videos esta semana'], [`${slots.length}`, '/ 5', 'slots ocupados']].map(([n, de, l]) => (
+              <div key={l} className="card" style={{ padding: '10px 16px', minWidth: 150 }}>
+                <div style={{ fontSize: 20, fontWeight: 500 }}>{n}<span style={{ fontSize: 13, color: '#999', fontWeight: 400 }}> {de}</span></div>
+                <div style={{ fontSize: 11, color: '#999' }}>{l}</div>
               </div>
             ))}
           </div>
-        </div>
+
+          {/* Los 5 slots */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            {[1, 2, 3, 4, 5].map(n => {
+              const s = slots.find(x => x.slot === n)
+              if (!s) {
+                return (
+                  <div key={n} className="card" style={{ borderStyle: 'dashed', background: 'transparent', minHeight: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#AAA' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' }}>Slot {n}</div>
+                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', cuenta_id: '' }); setModalSlot(n) }}>＋ Agregar canción</button>
+                    {disponiblesPrev.length > 0 && (
+                      <select className="input" style={{ fontSize: 12, maxWidth: 170 }} value=""
+                        onChange={e => { const p = prevSlots.find(x => x.cancion_id === e.target.value); if (p) copiar([p], n) }}>
+                        <option value="">Copiar de la semana pasada…</option>
+                        {disponiblesPrev.map(p => <option key={p.cancion_id} value={p.cancion_id}>{p.cancion}</option>)}
+                      </select>
+                    )}
+                  </div>
+                )
+              }
+              const pct = Math.min(100, Math.round((s.vids_mes / 24) * 100))
+              return (
+                <div key={n} className="card" onClick={() => { setCancionSel(n); setVista('cancion') }}
+                  style={{ borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 300, transition: 'box-shadow .12s' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+                  <div style={{ padding: '14px 14px 10px' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {n}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
+                    <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
+                  </div>
+                  <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <div style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-.02em' }}>{s.vids_sem}</div>
+                    <div style={{ fontSize: 11.5, color: '#999' }}>videos esta semana</div>
+                  </div>
+                  <div style={{ padding: '0 14px 10px', fontSize: 12, color: '#888' }}>{s.vids_mes} en el mes</div>
+                  <div style={{ margin: '0 14px 12px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: pct + '%', height: '100%', background: '#E8313A' }} />
+                  </div>
+                  <div style={{ flex: 1 }} />
+                  <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
+                    <button className="btn-red" style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }} onClick={() => { setCancionSel(n); setVista('cancion') }}>＋ Agregar videos</button>
+                    {s.tokchart_url
+                      ? <a href={s.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12.5, padding: '8px 10px' }}>Tokchart ↗</a>
+                      : <span className="btn-ghost" style={{ fontSize: 11.5, padding: '8px 10px', color: '#C0392B', cursor: 'default' }}>sin Tokchart</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Últimos videos */}
+          <div className="card" style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '12px 16px', borderBottom: '0.5px solid #F0F0EE' }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Últimos videos subidos</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select className="input" style={{ width: 'auto', fontSize: 12.5 }} value={filtro} onChange={e => setFiltro(e.target.value)}>
+                  <option value="">Todas las canciones</option>
+                  {[...new Map(ultimos.map(u => [u.cancion_id, u.cancion]))].map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
+                </select>
+                <button className="btn-ghost" style={{ fontSize: 12.5 }} onClick={() => {
+                  const links = ultimosVis.map(u => u.link_web || u.link_original).filter(Boolean)
+                  if (!links.length) return alert('No hay links.')
+                  navigator.clipboard.writeText(links.join('\n')).then(() => alert(`${links.length} links copiados`)).catch(() => prompt('Copiá:', links.join('\n')))
+                }}>Copiar links</button>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              {ultimosVis.length === 0 ? (
+                <div style={{ padding: 28, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay videos subidos.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+                  <thead><tr style={{ background: '#F7F7F5' }}>
+                    <th className="th">Canción</th><th className="th">Usuario</th><th className="th">Link</th><th className="th">Subido</th>
+                  </tr></thead>
+                  <tbody>
+                    {ultimosVis.map(u => (
+                      <tr key={u.id} style={{ borderTop: '0.5px solid #F3F3F1' }}>
+                        <td className="td">{u.cancion}</td>
+                        <td className="td">{u.handle ? '@' + u.handle : (u.cuenta_nombre || '—')}</td>
+                        <td className="td" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u.link_web ? <a href={u.link_web} target="_blank" rel="noreferrer" style={{ color: '#3B5BDB' }}>{u.link_web.replace('https://www.', '')}</a> : <span style={{ color: '#C0392B' }}>sin convertir</span>}
+                        </td>
+                        <td className="td" style={{ color: '#999' }}>{fechaHora(u.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.song ? 'Editar canción' : `Nueva canción · Slot ${modal?.slot}`}>
+      <Modal open={modalSlot != null} onClose={() => setModalSlot(null)} title={`Nueva canción · Slot ${modalSlot}`}>
         <div className="fg"><label className="label">Canción</label>
           <input className="input" value={form.cancion} onChange={e => setForm(f => ({ ...f, cancion: e.target.value }))} /></div>
         <div className="fg"><label className="label">Artista</label>
           <input className="input" value={form.artista} onChange={e => setForm(f => ({ ...f, artista: e.target.value }))} /></div>
         <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
           <input className="input" value={form.tokchart_url} onChange={e => setForm(f => ({ ...f, tokchart_url: e.target.value }))} placeholder="https://…" /></div>
-        <div className="fg"><label className="label">Notas</label>
-          <textarea className="input" rows={2} value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} /></div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
-          <button className="btn-red" onClick={guardar}>Guardar</button>
-        </div>
-      </Modal>
-    </div>
-  )
-}
-
-// ═════════════════════════ SEMANA ═════════════════════════
-function TabSemana({ mes, cuentas, canciones, semanas, onChanged }) {
-  const [semId, setSemId] = useState(null)
-  const [pruebas, setPruebas] = useState([])
-  const [modal, setModal] = useState(null) // { cancion }
-  const [form, setForm] = useState({ cuenta_id: '', tipo_contenido: TIPOS_CONTENIDO[0] })
-  const [concl, setConcl] = useState({ texto: '', publicar: false })
-
-  const sem = semanas.find(s => s.id === semId) || semanas[semanas.length - 1] || null
-  const semActualId = sem?.id
-
-  useEffect(() => { if (sem) setConcl({ texto: sem.conclusion || '', publicar: !!sem.conclusion_publicada }) }, [semActualId])
-
-  const cargarPruebas = useCallback(async () => {
-    if (!semActualId) { setPruebas([]); return }
-    try {
-      setPruebas(await sql`SELECT p.id, p.cancion_id, p.cuenta_id, p.tipo_contenido, p.decision, p.notas, c.nombre AS cuenta_nombre, c.handle AS cuenta_handle
-        FROM sb_pruebas p LEFT JOIN sb_cuentas c ON c.id = p.cuenta_id WHERE p.semana_id = ${semActualId} ORDER BY p.created_at`)
-    } catch (e) { console.error(e) }
-  }, [semActualId])
-  useEffect(() => { cargarPruebas() }, [cargarPruebas])
-
-  async function crearSemana(inicio, copiarDeId) {
-    try {
-      const r = await sql`INSERT INTO sb_semanas (mes, inicio) VALUES (${mes}, ${inicio}) RETURNING id`
-      if (copiarDeId) {
-        // Se mantienen las pruebas que NO se decidió cambiar
-        await sql`INSERT INTO sb_pruebas (semana_id, cancion_id, cuenta_id, tipo_contenido)
-                  SELECT ${r[0].id}::uuid, cancion_id, cuenta_id, tipo_contenido FROM sb_pruebas
-                  WHERE semana_id = ${copiarDeId} AND COALESCE(decision, 'mantener') <> 'cambiar'
-                  AND cancion_id IN (SELECT id FROM sb_canciones WHERE estado = 'activa')`
-      }
-      setSemId(r[0].id)
-      onChanged()
-    } catch (e) { alert('No se pudo crear la semana (¿ya existe?): ' + e.message) }
-  }
-
-  function nuevaSemana() {
-    const ultima = semanas[semanas.length - 1]
-    const base = ultima ? addDays(ultima.inicio, 7) : mondayOf(ymd(new Date()))
-    const inicio = base.slice(0, 7) === mes.slice(0, 7) ? base : mondayOf(mes)
-    if (ultima && !ultima.cerrada && !confirm('La semana anterior sigue abierta. ¿Crear la siguiente igual?')) return
-    crearSemana(inicio, ultima?.id)
-  }
-
-  async function agregarPrueba() {
-    if (!form.cuenta_id) return alert('Elegí una cuenta')
-    try {
-      await sql`INSERT INTO sb_pruebas (semana_id, cancion_id, cuenta_id, tipo_contenido) VALUES (${semActualId}, ${modal.cancion.id}, ${form.cuenta_id}, ${form.tipo_contenido})`
-      setModal(null); cargarPruebas()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function decidir(p, decision) {
-    try {
-      await sql`UPDATE sb_pruebas SET decision = ${p.decision === decision ? null : decision} WHERE id = ${p.id}`
-      cargarPruebas()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function borrarPrueba(p) {
-    if (!confirm('¿Quitar esta prueba de la semana?')) return
-    try { await sql`DELETE FROM sb_pruebas WHERE id = ${p.id}`; cargarPruebas() } catch (e) { alert(e.message) }
-  }
-
-  async function cerrarSemana() {
-    const sinDecision = pruebas.filter(p => !p.decision).length
-    if (sinDecision && !confirm(`Hay ${sinDecision} prueba(s) sin decisión (se tomarán como "mantener"). ¿Cerrar la semana igual?`)) return
-    if (!confirm('Al cerrar, la semana queda bloqueada y no se puede editar. ¿Cerrar?')) return
-    try {
-      await sql`UPDATE sb_semanas SET cerrada = true, conclusion = ${concl.texto}, conclusion_publicada = ${concl.publicar} WHERE id = ${semActualId}`
-      onChanged()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function reabrir() {
-    if (!confirm('¿Reabrir la semana para editarla?')) return
-    try { await sql`UPDATE sb_semanas SET cerrada = false WHERE id = ${semActualId}`; onChanged() } catch (e) { alert(e.message) }
-  }
-
-  async function guardarConclusion() {
-    try {
-      await sql`UPDATE sb_semanas SET conclusion = ${concl.texto}, conclusion_publicada = ${concl.publicar} WHERE id = ${semActualId}`
-      onChanged()
-    } catch (e) { alert(e.message) }
-  }
-
-  const activas = canciones.filter(c => c.estado === 'activa')
-  const idsConPruebas = new Set(pruebas.map(p => p.cancion_id))
-  const visibles = [...activas, ...canciones.filter(c => c.estado !== 'activa' && idsConPruebas.has(c.id))]
-  const bloqueada = !!sem?.cerrada
-
-  if (!semanas.length) {
-    return (
-      <div className="card" style={{ padding: 30, textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>No hay semanas en {mesLabel(mes)}.</div>
-        <button className="btn-red" onClick={() => crearSemana(mondayOf(mes === firstOfMonth(new Date()) ? ymd(new Date()) : mes), null)}>Crear primera semana</button>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-        {semanas.map(s => (
-          <div key={s.id} onClick={() => setSemId(s.id)} style={{
-            padding: '6px 12px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
-            background: s.id === semActualId ? '#FCEBEB' : '#fff',
-            color: s.id === semActualId ? '#A32D2D' : '#666',
-            border: '0.5px solid ' + (s.id === semActualId ? '#F7C1C1' : '#E5E5E2'),
-          }}>{semLabel(s.inicio)} {s.cerrada && '🔒'}</div>
-        ))}
-        <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={nuevaSemana}>＋ Semana siguiente</button>
-      </div>
-
-      {bloqueada && <div style={{ background: '#F1EFE8', color: '#5F5E5A', fontSize: 12, padding: '8px 12px', borderRadius: 8, marginBottom: 12 }}>Semana cerrada: solo lectura.</div>}
-
-      {visibles.length === 0 && <div className="card" style={{ padding: 24, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Agregá canciones en la pestaña Canciones.</div>}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {visibles.map(c => {
-          const ps = pruebas.filter(p => p.cancion_id === c.id)
-          return (
-            <div key={c.id} className="card" style={{ padding: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: ps.length ? 10 : 0 }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{c.slot ? `${c.slot}. ` : ''}{c.cancion}</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>{c.artista || '—'}{c.estado === 'salio' ? ' · salió' : ''}</div>
-                </div>
-                {!bloqueada && c.estado === 'activa' && (
-                  <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }}
-                    onClick={() => { setForm({ cuenta_id: '', tipo_contenido: TIPOS_CONTENIDO[0] }); setModal({ cancion: c }) }}>＋ Prueba</button>
-                )}
-              </div>
-              {ps.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 0', borderTop: '0.5px solid #F0F0EE' }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontSize: 13 }}>{p.cuenta_nombre || '—'} <span style={{ color: '#AAA', fontSize: 11 }}>{p.cuenta_handle}</span></div>
-                    <div style={{ fontSize: 11.5, color: '#888' }}>{p.tipo_contenido || '—'}</div>
-                  </div>
-                  {['mantener', 'cambiar'].map(d => {
-                    const on = p.decision === d
-                    return (
-                      <button key={d} disabled={bloqueada} onClick={() => decidir(p, d)} style={{
-                        fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: bloqueada ? 'default' : 'pointer', fontFamily: 'inherit',
-                        background: on ? DECISION_STYLE[d].bg : '#fff', color: on ? DECISION_STYLE[d].color : '#888',
-                        border: '0.5px solid ' + (on ? 'transparent' : '#D0D0CC'),
-                      }}>{DECISION_STYLE[d].label}</button>
-                    )
-                  })}
-                  {!bloqueada && <button className="btn-icon btn-icon-danger" onClick={() => borrarPrueba(p)}>✕</button>}
-                </div>
-              ))}
-            </div>
-          )
-        })}
-      </div>
-
-      {sem && (
-        <div className="card" style={{ padding: 14, marginTop: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Conclusión de la semana</div>
-          <textarea className="input" rows={3} value={concl.texto} disabled={bloqueada}
-            onChange={e => setConcl(c => ({ ...c, texto: e.target.value }))}
-            placeholder="Qué funcionó, qué se cambia y por qué…" />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', margin: '8px 0 12px' }}>
-            <input type="checkbox" checked={concl.publicar} disabled={bloqueada}
-              onChange={e => setConcl(c => ({ ...c, publicar: e.target.checked }))} />
-            Publicar para el cliente (se muestra en su vista)
-          </label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {bloqueada ? (
-              <button className="btn-ghost" onClick={reabrir}>Reabrir semana</button>
-            ) : (
-              <>
-                <button className="btn-ghost" onClick={guardarConclusion}>Guardar borrador</button>
-                <button className="btn-red" onClick={cerrarSemana}>Cerrar semana 🔒</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <Modal open={!!modal} onClose={() => setModal(null)} title={`Prueba · ${modal?.cancion?.cancion || ''}`}>
-        <div className="fg"><label className="label">Cuenta</label>
+        <div className="fg"><label className="label">Cuenta de esta canción (opcional)</label>
           <select className="input" value={form.cuenta_id} onChange={e => setForm(f => ({ ...f, cuenta_id: e.target.value }))}>
-            <option value="">Elegir…</option>
+            <option value="">Sin asignar</option>
             {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
           </select></div>
-        <div className="fg"><label className="label">Tipo de contenido</label>
-          <select className="input" value={form.tipo_contenido} onChange={e => setForm(f => ({ ...f, tipo_contenido: e.target.value }))}>
-            {TIPOS_CONTENIDO.map(t => <option key={t}>{t}</option>)}
-          </select></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
-          <button className="btn-red" onClick={agregarPrueba}>Agregar</button>
+          <button className="btn-ghost" onClick={() => setModalSlot(null)}>Cancelar</button>
+          <button className="btn-red" onClick={guardarNueva}>Guardar</button>
         </div>
       </Modal>
     </div>
   )
 }
 
-// ═════════════════════════ CUENTAS ═════════════════════════
-function TabCuentas({ cuentas, onChanged }) {
+// ═════════════════════════ DESGLOSE DE UNA CANCIÓN ═════════════════════════
+function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
+  const [info, setInfo] = useState(slot)
+  const [videos, setVideos] = useState([])
+  const [modalAdd, setModalAdd] = useState(false)
+  const [modalEdit, setModalEdit] = useState(false)
+  const [texto, setTexto] = useState('')
+  const [cuentaId, setCuentaId] = useState(slot.cuenta_id || '')
+  const [formEdit, setFormEdit] = useState({})
+  const [busy, setBusy] = useState(false)
+
+  const cargar = useCallback(async () => {
+    try {
+      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.cuenta_id, v.created_at, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
+        FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id LEFT JOIN sb_cuentas cu ON cu.id = v.cuenta_id
+        WHERE v.cancion_id = ${slot.cancion_id} ORDER BY v.created_at DESC, v.id`)
+    } catch (e) { console.error(e) }
+  }, [slot.cancion_id])
+  useEffect(() => { cargar() }, [cargar])
+
+  async function agregar() {
+    const lineas = [...new Set(texto.split(/\s+/).map(s => s.trim()).filter(l => /^https?:\/\//i.test(l)))]
+    if (!lineas.length) return alert('Pegá al menos un link (uno por línea).')
+    setBusy(true)
+    try {
+      let semId = semanaId
+      if (!semId) {
+        const r = await sql`SELECT id FROM sb_semanas WHERE inicio = ${inicio}`
+        semId = r[0]?.id || null
+      }
+      const conv = await convertMany(lineas)
+      let nuevos = 0, repetidos = 0, sinConvertir = 0, sinUsuario = 0
+      for (let i = 0; i < lineas.length; i++) {
+        const web = conv[i].error ? '' : conv[i].url
+        if (conv[i].error) sinConvertir++
+        const { handle, video_id } = parseVideo(web)
+        // La cuenta solo se guarda cuando el link no trae usuario
+        const cuenta = handle ? null : (cuentaId || null)
+        if (!handle && !cuenta) sinUsuario++
+        const r = await sql`INSERT INTO sb_videos (cancion_id, semana_id, cuenta_id, link_original, link_web, handle, video_id)
+          VALUES (${slot.cancion_id}, ${semId}, ${cuenta}, ${lineas[i]}, ${web}, ${handle}, ${video_id})
+          ON CONFLICT DO NOTHING RETURNING id`
+        if (r.length) nuevos++; else repetidos++
+      }
+      setModalAdd(false); setTexto('')
+      await cargar(); onChanged()
+      alert(`Agregados: ${nuevos}` + (repetidos ? `\nRepetidos (ignorados): ${repetidos}` : '')
+        + (sinConvertir ? `\nSin convertir: ${sinConvertir} (usá "Reintentar conversión")` : '')
+        + (sinUsuario ? `\nSin usuario ni cuenta: ${sinUsuario} (elegí la cuenta en la lista)` : ''))
+    } catch (e) { alert('Error: ' + e.message) }
+    setBusy(false)
+  }
+
+  async function reintentar() {
+    const pend = videos.filter(v => !v.link_web || isMobileTikTok(v.link_web))
+    if (!pend.length) return alert('No hay videos pendientes de conversión.')
+    setBusy(true)
+    try {
+      const conv = await convertMany(pend.map(v => v.link_original))
+      let ok = 0
+      for (let i = 0; i < pend.length; i++) {
+        if (conv[i].error) continue
+        const { handle, video_id } = parseVideo(conv[i].url)
+        try { await sql`UPDATE sb_videos SET link_web=${conv[i].url}, handle=${handle}, video_id=${video_id} WHERE id=${pend[i].id}`; ok++ } catch (e) { /* duplicado */ }
+      }
+      await cargar(); onChanged()
+      alert(`Convertidos: ${ok} de ${pend.length}`)
+    } catch (e) { alert(e.message) }
+    setBusy(false)
+  }
+
+  async function asignarCuenta(v, id) {
+    try { await sql`UPDATE sb_videos SET cuenta_id = ${id || null} WHERE id = ${v.id}`; cargar() } catch (e) { alert(e.message) }
+  }
+  async function borrar(v) {
+    if (!confirm('¿Quitar este video?')) return
+    try { await sql`DELETE FROM sb_videos WHERE id = ${v.id}`; await cargar(); onChanged() } catch (e) { alert(e.message) }
+  }
+
+  function copiarTodos() {
+    const links = videos.map(v => v.link_web || v.link_original).filter(Boolean)
+    if (!links.length) return alert('No hay links.')
+    navigator.clipboard.writeText(links.join('\n')).then(() => alert(`${links.length} links copiados`)).catch(() => prompt('Copiá:', links.join('\n')))
+  }
+
+  function abrirEditar() {
+    setFormEdit({ cancion: info.cancion, artista: info.artista || '', tokchart_url: info.tokchart_url || '', notas: info.notas || '', cuenta_id: info.cuenta_id || '' })
+    setModalEdit(true)
+  }
+  async function guardarEditar() {
+    if (!formEdit.cancion.trim()) return alert('Falta el nombre')
+    try {
+      await sql`UPDATE sb_canciones SET cancion=${formEdit.cancion.trim()}, artista=${formEdit.artista}, tokchart_url=${formEdit.tokchart_url.trim()}, notas=${formEdit.notas} WHERE id=${slot.cancion_id}`
+      await sql`UPDATE sb_semana_slots SET cuenta_id=${formEdit.cuenta_id || null} WHERE id=${slot.ss_id}`
+      setInfo(i => ({ ...i, ...formEdit, cuenta_id: formEdit.cuenta_id || null }))
+      setModalEdit(false); onChanged()
+    } catch (e) { alert(e.message) }
+  }
+  async function quitarDeSemana() {
+    if (!confirm('¿Quitar esta canción de la semana? Sus videos quedan guardados.')) return
+    try { await sql`DELETE FROM sb_semana_slots WHERE id = ${slot.ss_id}`; onBack() } catch (e) { alert(e.message) }
+  }
+
+  const pendientes = videos.filter(v => !v.link_web || isMobileTikTok(v.link_web)).length
+  const cuentaSlot = cuentas.find(c => c.id === info.cuenta_id)
+  const deSemana = videos.filter(v => v.semana_inicio === inicio).length
+
+  return (
+    <div style={{ padding: '28px 28px', maxWidth: 1000, margin: '0 auto' }}>
+      <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={onBack}>← {tituloSemana(inicio)}</button>
+
+      <div className="card" style={{ padding: 18, marginBottom: 14, borderTop: '3px solid #E8313A' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {info.slot}</div>
+            <div style={{ fontSize: 20, fontWeight: 500, marginTop: 2 }}>{info.cancion}</div>
+            <div style={{ fontSize: 12.5, color: '#888' }}>{info.artista || '—'}{cuentaSlot ? ` · Cuenta: ${cuentaSlot.nombre}${cuentaSlot.handle ? ' ' + cuentaSlot.handle : ''}` : ''}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {info.tokchart_url
+              ? <a href={info.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>Reporte Tokchart ↗</a>
+              : <span style={{ fontSize: 12, color: '#C0392B', alignSelf: 'center' }}>Falta el link de Tokchart</span>}
+            <button className="btn-ghost" onClick={abrirEditar}>Editar</button>
+            <button className="btn-ghost" onClick={quitarDeSemana}>Quitar de la semana</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 24, marginTop: 14 }}>
+          <div><div style={{ fontSize: 22, fontWeight: 500 }}>{deSemana}</div><div style={{ fontSize: 11, color: '#999' }}>esta semana</div></div>
+          <div><div style={{ fontSize: 22, fontWeight: 500 }}>{videos.length}</div><div style={{ fontSize: 11, color: '#999' }}>en el mes</div></div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>Videos</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {pendientes > 0 && <button className="btn-ghost" style={{ fontSize: 12 }} disabled={busy} onClick={reintentar}>{busy ? 'Convirtiendo…' : `Reintentar conversión (${pendientes})`}</button>}
+          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={copiarTodos}>Copiar todos los links</button>
+          <button className="btn-red" style={{ fontSize: 12 }} onClick={() => setModalAdd(true)}>＋ Agregar videos</button>
+        </div>
+      </div>
+
+      <div className="card" style={{ overflowX: 'auto' }}>
+        {videos.length === 0 ? (
+          <div style={{ padding: 30, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay videos para esta canción.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+            <thead><tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
+              <th className="th">#</th><th className="th">Semana</th><th className="th">Usuario</th><th className="th">Link</th><th className="th">Subido</th><th className="th"></th>
+            </tr></thead>
+            <tbody>
+              {videos.map((v, i) => (
+                <tr key={v.id} style={{ borderBottom: '0.5px solid #F0F0EE' }}>
+                  <td className="td" style={{ color: '#AAA' }}>{videos.length - i}</td>
+                  <td className="td" style={{ color: '#888' }}>{v.semana_inicio ? rangoSemana(v.semana_inicio) : '—'}</td>
+                  <td className="td">
+                    {v.handle ? '@' + v.handle : (
+                      <select className="input" style={{ fontSize: 12, padding: '4px 6px', width: 130, borderColor: v.cuenta_id ? undefined : '#E8313A' }}
+                        value={v.cuenta_id || ''} onChange={e => asignarCuenta(v, e.target.value)}>
+                        <option value="">¿Qué cuenta?</option>
+                        {cuentas.filter(c => c.activa || c.id === v.cuenta_id).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
+                    )}
+                  </td>
+                  <td className="td" style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {v.link_web ? <a href={v.link_web} target="_blank" rel="noreferrer" style={{ color: '#3B5BDB' }}>{v.link_web.replace('https://www.', '')}</a> : <span style={{ color: '#C0392B' }}>sin convertir</span>}
+                  </td>
+                  <td className="td" style={{ color: '#999' }}>{fechaHora(v.created_at)}</td>
+                  <td className="td"><button className="btn-icon btn-icon-danger" onClick={() => borrar(v)}>✕</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <Modal open={modalAdd} onClose={() => !busy && setModalAdd(false)} title="Agregar videos">
+        <div className="fg"><label className="label">Links de TikTok (uno por línea; móviles o de escritorio)</label>
+          <textarea className="input" rows={8} value={texto} onChange={e => setTexto(e.target.value)} placeholder={'https://vt.tiktok.com/…\nhttps://vt.tiktok.com/…'} /></div>
+        <div className="fg"><label className="label">Cuenta (solo si el link no muestra el usuario)</label>
+          <select className="input" value={cuentaId} onChange={e => setCuentaId(e.target.value)}>
+            <option value="">Sin asignar</option>
+            {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
+          </select>
+          <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>El usuario se detecta solo desde el link. Esta cuenta se usa únicamente cuando no se puede detectar.</div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn-ghost" disabled={busy} onClick={() => setModalAdd(false)}>Cancelar</button>
+          <button className="btn-red" disabled={busy} onClick={agregar}>{busy ? 'Convirtiendo y guardando…' : 'Agregar'}</button>
+        </div>
+      </Modal>
+
+      <Modal open={modalEdit} onClose={() => setModalEdit(false)} title="Editar canción">
+        <div className="fg"><label className="label">Canción</label>
+          <input className="input" value={formEdit.cancion || ''} onChange={e => setFormEdit(f => ({ ...f, cancion: e.target.value }))} /></div>
+        <div className="fg"><label className="label">Artista</label>
+          <input className="input" value={formEdit.artista || ''} onChange={e => setFormEdit(f => ({ ...f, artista: e.target.value }))} /></div>
+        <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
+          <input className="input" value={formEdit.tokchart_url || ''} onChange={e => setFormEdit(f => ({ ...f, tokchart_url: e.target.value }))} /></div>
+        <div className="fg"><label className="label">Cuenta de esta canción</label>
+          <select className="input" value={formEdit.cuenta_id || ''} onChange={e => setFormEdit(f => ({ ...f, cuenta_id: e.target.value }))}>
+            <option value="">Sin asignar</option>
+            {cuentas.filter(c => c.activa || c.id === info.cuenta_id).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
+          </select></div>
+        <div className="fg"><label className="label">Notas</label>
+          <textarea className="input" rows={2} value={formEdit.notas || ''} onChange={e => setFormEdit(f => ({ ...f, notas: e.target.value }))} /></div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => setModalEdit(false)}>Cancelar</button>
+          <button className="btn-red" onClick={guardarEditar}>Guardar</button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+// ═════════════════════════ CONFIGURACIÓN (cuentas) ═════════════════════════
+function Config({ cuentas, onBack, onChanged }) {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ nombre: '', handle: '', notas: '' })
 
@@ -457,9 +534,13 @@ function TabCuentas({ cuentas, onChanged }) {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontSize: 12, color: '#888' }}>{cuentas.filter(c => c.activa).length} cuentas activas</div>
+    <div style={{ padding: '28px 28px', maxWidth: 760, margin: '0 auto' }}>
+      <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={onBack}>← Volver</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500 }}>Configuración</h1>
+          <div style={{ fontSize: 12, color: '#AAA' }}>Cuentas de TikTok de los community managers</div>
+        </div>
         <button className="btn-red" style={{ fontSize: 12 }} onClick={() => abrir(null)}>＋ Nueva cuenta</button>
       </div>
       <div className="card">
@@ -485,150 +566,6 @@ function TabCuentas({ cuentas, onChanged }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
           <button className="btn-red" onClick={guardar}>Guardar</button>
-        </div>
-      </Modal>
-    </div>
-  )
-}
-
-// ═════════════════════════ PÁGINA DE UNA CANCIÓN ═════════════════════════
-function CancionPage({ cancion, cuentas, onBack, onChanged }) {
-  const [videos, setVideos] = useState([])
-  const [modal, setModal] = useState(false)
-  const [texto, setTexto] = useState('')
-  const [cuentaId, setCuentaId] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const cargar = useCallback(async () => {
-    try {
-      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.video_id, v.cuenta_id, c.nombre AS cuenta_nombre
-        FROM sb_videos v LEFT JOIN sb_cuentas c ON c.id = v.cuenta_id WHERE v.cancion_id = ${cancion.id} ORDER BY v.created_at, v.id`)
-    } catch (e) { console.error(e) }
-  }, [cancion.id])
-  useEffect(() => { cargar() }, [cargar])
-
-  async function agregar() {
-    const lineas = [...new Set(texto.split(/\s+/).map(s => s.trim()).filter(l => /^https?:\/\//i.test(l)))]
-    if (!lineas.length) return alert('Pegá al menos un link (uno por línea).')
-    setBusy(true)
-    try {
-      const conv = await convertMany(lineas)
-      let nuevos = 0, repetidos = 0, sinConvertir = 0
-      for (let i = 0; i < lineas.length; i++) {
-        const web = conv[i].error ? '' : conv[i].url
-        if (conv[i].error) sinConvertir++
-        const { handle, video_id } = parseVideo(web)
-        const r = await sql`INSERT INTO sb_videos (cancion_id, cuenta_id, link_original, link_web, handle, video_id)
-          VALUES (${cancion.id}, ${cuentaId || null}, ${lineas[i]}, ${web}, ${handle}, ${video_id})
-          ON CONFLICT DO NOTHING RETURNING id`
-        if (r.length) nuevos++; else repetidos++
-      }
-      setModal(false); setTexto('')
-      await cargar()
-      alert(`Agregados: ${nuevos}` + (repetidos ? `\nRepetidos (ignorados): ${repetidos}` : '') + (sinConvertir ? `\nSin convertir: ${sinConvertir} (usá "Reintentar conversión")` : ''))
-    } catch (e) { alert('Error: ' + e.message) }
-    setBusy(false)
-  }
-
-  async function reintentar() {
-    const pend = videos.filter(v => !v.link_web || isMobileTikTok(v.link_web))
-    if (!pend.length) return alert('No hay videos pendientes de conversión.')
-    setBusy(true)
-    try {
-      const conv = await convertMany(pend.map(v => v.link_original))
-      let ok = 0
-      for (let i = 0; i < pend.length; i++) {
-        if (conv[i].error) continue
-        const { handle, video_id } = parseVideo(conv[i].url)
-        try {
-          await sql`UPDATE sb_videos SET link_web=${conv[i].url}, handle=${handle}, video_id=${video_id} WHERE id=${pend[i].id}`
-          ok++
-        } catch (e) { /* duplicado: queda como estaba */ }
-      }
-      await cargar()
-      alert(`Convertidos: ${ok} de ${pend.length}`)
-    } catch (e) { alert(e.message) }
-    setBusy(false)
-  }
-
-  async function borrar(v) {
-    if (!confirm('¿Quitar este video?')) return
-    try { await sql`DELETE FROM sb_videos WHERE id = ${v.id}`; cargar() } catch (e) { alert(e.message) }
-  }
-
-  function copiarTodos() {
-    const links = videos.map(v => v.link_web || v.link_original).filter(Boolean)
-    if (!links.length) return alert('No hay links.')
-    navigator.clipboard.writeText(links.join('\n'))
-      .then(() => alert(`${links.length} links copiados`))
-      .catch(() => prompt('Copiá:', links.join('\n')))
-  }
-
-  const pendientes = videos.filter(v => !v.link_web || isMobileTikTok(v.link_web)).length
-
-  return (
-    <div>
-      <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={onBack}>← Volver</button>
-      <div className="card" style={{ padding: 16, marginBottom: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 500 }}>{cancion.cancion}</div>
-            <div style={{ fontSize: 12.5, color: '#888' }}>{cancion.artista || '—'} · {mesLabel(cancion.mes)}{cancion.slot ? ` · Slot ${cancion.slot}` : ' · salió'}</div>
-          </div>
-          {cancion.tokchart_url
-            ? <a href={cancion.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>Ver reporte Tokchart ↗</a>
-            : <div style={{ fontSize: 12, color: '#C0392B' }}>Falta el link de Tokchart de este mes</div>}
-        </div>
-        {cancion.notas && <div style={{ fontSize: 12.5, color: '#666', marginTop: 10 }}>{cancion.notas}</div>}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 500 }}>Videos <span style={{ color: '#AAA', fontWeight: 400 }}>({videos.length})</span></div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {pendientes > 0 && <button className="btn-ghost" style={{ fontSize: 12 }} disabled={busy} onClick={reintentar}>{busy ? 'Convirtiendo…' : `Reintentar conversión (${pendientes})`}</button>}
-          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={copiarTodos}>Copiar todos los links</button>
-          <button className="btn-red" style={{ fontSize: 12 }} onClick={() => setModal(true)}>＋ Agregar videos</button>
-        </div>
-      </div>
-
-      <div className="card" style={{ overflowX: 'auto' }}>
-        {videos.length === 0 ? (
-          <div style={{ padding: 30, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay videos para esta canción.</div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
-            <thead><tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
-              <th className="th">#</th><th className="th">Cuenta</th><th className="th">Usuario</th><th className="th">Link</th><th className="th"></th>
-            </tr></thead>
-            <tbody>
-              {videos.map((v, i) => (
-                <tr key={v.id} style={{ borderBottom: '0.5px solid #F0F0EE' }}>
-                  <td className="td" style={{ color: '#AAA' }}>{i + 1}</td>
-                  <td className="td">{v.cuenta_nombre || '—'}</td>
-                  <td className="td">{v.handle ? '@' + v.handle : '—'}</td>
-                  <td className="td" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {v.link_web
-                      ? <a href={v.link_web} target="_blank" rel="noreferrer" style={{ color: '#3B5BDB' }}>{v.link_web.replace('https://www.', '')}</a>
-                      : <span style={{ color: '#C0392B' }}>sin convertir</span>}
-                  </td>
-                  <td className="td"><button className="btn-icon btn-icon-danger" onClick={() => borrar(v)}>✕</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <Modal open={modal} onClose={() => !busy && setModal(false)} title="Agregar videos">
-        <div className="fg"><label className="label">Links de TikTok (uno por línea, móviles o de escritorio)</label>
-          <textarea className="input" rows={8} value={texto} onChange={e => setTexto(e.target.value)} placeholder={'https://vt.tiktok.com/…\nhttps://vt.tiktok.com/…'} /></div>
-        <div className="fg"><label className="label">Cuenta (opcional, aplica a todos)</label>
-          <select className="input" value={cuentaId} onChange={e => setCuentaId(e.target.value)}>
-            <option value="">Sin asignar</option>
-            {cuentas.filter(c => c.activa).map(c => <option key={c.id} value={c.id}>{c.nombre} {c.handle}</option>)}
-          </select></div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn-ghost" disabled={busy} onClick={() => setModal(false)}>Cancelar</button>
-          <button className="btn-red" disabled={busy} onClick={agregar}>{busy ? 'Convirtiendo y guardando…' : 'Agregar'}</button>
         </div>
       </Modal>
     </div>
