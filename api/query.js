@@ -43,7 +43,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No se permite más de una sentencia por consulta' })
   }
 
-  const readOnly = isSelect(text)
+  // La tabla de links de la editora nunca se lee sin sesión, ni siquiera con SELECT.
+  const readOnly = isSelect(text) && !/sb_editor_tokens/i.test(text)
 
   if (!readOnly) {
     // Crear, editar o borrar algo exige sesión válida (Lucas/Nico logueados)
