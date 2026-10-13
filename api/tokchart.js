@@ -8,7 +8,6 @@ import { isValidTikTokUrl, isTikTokHost, expandTikTok } from './_tiktok.js'
 const TOKCHART = 'https://tokchart.com/api/v1'
 const TT_REPORT_BASE = 'https://tokchart.com/campaigns/'
 const IG_REPORT_BASE = 'https://tokchart.com/campaigns/instagram/'
-const CHUNK = 50
 const MAX_CONVERTIR = 16 // links cortos que se convierten por pulsación (para no pasar el tiempo límite)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -52,7 +51,7 @@ async function linksPendientes(campaignId, plat) {
   const col = plat === 'tiktok' ? 'video_link_tt' : 'video_link_ig'
   const rows = (await pool.query(`SELECT id, influencer_id, ${col} AS url FROM campaign_influencers WHERE campaign_id = $1 AND ${col} <> ''`, [campaignId])).rows
   const enviados = new Set((await pool.query('SELECT url FROM tokchart_links WHERE campaign_id = $1 AND plataforma = $2', [campaignId, plat])).rows.map(r => r.url))
-  const validos = [], omitidos = []
+  const validos = [], omitidos = [], todos = []
   const porConvertir = []
   for (const row of rows) {
     const u = (row.url || '').trim()
@@ -60,6 +59,7 @@ async function linksPendientes(campaignId, plat) {
     if (plat === 'tiktok' && !isValidTikTokUrl(u) && esMovilTT(u)) { porConvertir.push({ ...row, url: u }); continue }
     const ok = plat === 'tiktok' ? isValidTikTokUrl(u) : esReelIG(u)
     if (!ok) { omitidos.push(u); continue }
+    if (!todos.includes(u)) todos.push(u)
     if (!enviados.has(u) && !validos.includes(u)) validos.push(u)
   }
 
@@ -76,10 +76,11 @@ async function linksPendientes(campaignId, plat) {
       await pool.query('UPDATE campaign_influencers SET video_link_tt = $1 WHERE id = $2 AND video_link_tt = $3', [nuevo, r.id, r.url])
       await pool.query("UPDATE posts SET url = $1 WHERE campaign_id = $2 AND influencer_id = $3 AND plataforma = 'TikTok' AND url = $4", [nuevo, campaignId, r.influencer_id, r.url])
       convertidos++
+      if (!todos.includes(nuevo)) todos.push(nuevo)
       if (!enviados.has(nuevo) && !validos.includes(nuevo)) validos.push(nuevo)
     }
   }
-  return { validos, omitidos, convertidos, faltanConvertir }
+  return { validos, todos, omitidos, convertidos, faltanConvertir }
 }
 
 async function marcarEnviados(campaignId, plat, urls) {
@@ -145,13 +146,14 @@ export default async function handler(req, res) {
     if (action === 'sync') {
       if (!conLinks) return res.status(400).json({ error: 'Este tipo de campaña no envía links automáticamente.' })
       if (!uuidActual) return res.status(200).json({ sinReporte: true })
-      const { validos, omitidos, convertidos, faltanConvertir } = await linksPendientes(camp.id, plataforma)
+      // Siempre se envía la lista COMPLETA de links de la campaña, en una sola petición.
+      // (Según lo observado, Tokchart reemplaza la lista con lo que recibe: si se mandaran solo los nuevos, se perderían los anteriores.)
+      const { todos, omitidos, convertidos, faltanConvertir } = await linksPendientes(camp.id, plataforma)
       let enviados = 0
-      for (let i = 0; i < validos.length; i += CHUNK) {
-        const parte = validos.slice(i, i + CHUNK)
-        await tokchart(`/campaigns/${tt ? 'tiktok' : 'instagram'}/${uuidActual}`, { links: parte })
-        await marcarEnviados(camp.id, plataforma, parte)
-        enviados += parte.length
+      if (todos.length) {
+        await tokchart(`/campaigns/${tt ? 'tiktok' : 'instagram'}/${uuidActual}`, { links: todos })
+        await marcarEnviados(camp.id, plataforma, todos)
+        enviados = todos.length
       }
       return res.status(200).json({ enviados, omitidos: omitidos.length, convertidos, faltanConvertir })
     }
