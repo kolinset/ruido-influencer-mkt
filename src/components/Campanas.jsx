@@ -1010,7 +1010,10 @@ export default function Campanas({ initialCamp = null }) {
 
   function resumenEnvio(r) {
     const partes = []
-    if (r.omitidos) partes.push(`${r.omitidos} link(s) no se enviaron porque no están en formato de escritorio (usá "Convertir links")`)
+    if (r.convertidos) partes.push(`${r.convertidos} link(s) cortos se convirtieron automáticamente`)
+    if (r.faltanConvertir) partes.push(`Quedan ${r.faltanConvertir} link(s) cortos por convertir: volvé a apretar el botón`)
+    const fallidos = (r.omitidos || 0) - (r.faltanConvertir || 0)
+    if (fallidos > 0) partes.push(`${fallidos} link(s) no se pudieron enviar (no se pudieron convertir o no son de TikTok/Instagram válidos): revisalos en la lista`)
     return partes.length ? '\n' + partes.join('\n') : ''
   }
 
@@ -1045,10 +1048,11 @@ export default function Campanas({ initialCamp = null }) {
       const r = await tokchartCall({ action: 'sync', campaign_id: currentCamp.id, plataforma })
       if (!r.ok) {
         alert('Se guardó en ROSTER, pero no se pudo enviar a Tokchart: ' + (r.message || r.error || 'error') + '\nPodés reintentar con el botón "Enviar links a Tokchart".')
-      } else if (!silencioso) {
+        setTokchartBusy(''); return
+      }
+      if (r.convertidos) await fetchCamps()
+      if (!silencioso) {
         alert(r.enviados ? `${r.enviados} link(s) enviados a Tokchart.` + resumenEnvio(r) : 'No había links nuevos para enviar.' + resumenEnvio(r))
-      } else if (r.omitidos) {
-        alert('Algunos links no se enviaron a Tokchart porque no están en formato de escritorio.' )
       }
     } catch (e) { alert('Se guardó en ROSTER, pero falló el envío a Tokchart: ' + e.message) }
     setTokchartBusy('')
