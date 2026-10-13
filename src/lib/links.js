@@ -57,3 +57,18 @@ export function cleanInstagram(url) {
     return u.origin + u.pathname
   } catch { return raw }
 }
+
+// ───── Tokchart (vía /api/tokchart, solo usuarios con login) ─────
+export async function tokchartCall(body) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch('/api/tokchart', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+  const json = await res.json().catch(() => ({}))
+  return { ok: res.ok, status: res.status, ...json }
+}
