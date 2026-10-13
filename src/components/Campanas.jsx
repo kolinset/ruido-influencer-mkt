@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import sql from '../lib/db'
-import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram } from '../lib/links'
+import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram, tokchartCall } from '../lib/links'
 import Modal from './Modal'
 import SharePanel from './SharePanel'
 import Reportes from './Reportes'
@@ -616,6 +616,8 @@ export default function Campanas({ initialCamp = null }) {
             fecha_inicio: row.fecha_inicio || '', fecha_termino: row.fecha_termino || '',
             reporte_url_tt: row.reporte_url_tt || '',
             reporte_url_ig: row.reporte_url_ig || '',
+            tokchart_tt_uuid: row.tokchart_tt_uuid || '',
+            tokchart_ig_uuid: row.tokchart_ig_uuid || '',
             tipo: row.tipo || 'Influencer MKT',
             contenidos_count: row.contenidos_count || 0,
             views_logradas: row.views_logradas || 0,
@@ -1004,6 +1006,53 @@ export default function Campanas({ initialCamp = null }) {
   }
 
   const [convirtiendo, setConvirtiendo] = useState(false)
+  const [tokchartBusy, setTokchartBusy] = useState('')
+
+  function resumenEnvio(r) {
+    const partes = []
+    if (r.omitidos) partes.push(`${r.omitidos} link(s) no se enviaron porque no están en formato de escritorio (usá "Convertir links")`)
+    return partes.length ? '\n' + partes.join('\n') : ''
+  }
+
+  // Crear el reporte en Tokchart (siempre por botón)
+  async function tokchartCrear(plataforma, sobrescribir = false) {
+    if (!currentCamp) return
+    const etiqueta = plataforma === 'tiktok' ? 'TikTok' : 'Instagram'
+    if (!sobrescribir && !confirm(`Crear el reporte de ${etiqueta} en Tokchart para esta campaña?`)) return
+    setTokchartBusy(plataforma)
+    try {
+      const r = await tokchartCall({ action: 'create', campaign_id: currentCamp.id, plataforma, sobrescribir })
+      if (r.status === 409 && r.error === 'ya_tiene_link') {
+        setTokchartBusy('')
+        if (confirm(`Esta campaña ya tiene un link de reporte de ${etiqueta}:\n${r.actual}\n\n¿Reemplazarlo por el nuevo reporte de Tokchart?`)) return tokchartCrear(plataforma, true)
+        return
+      }
+      if (!r.ok) { alert('No se pudo crear el reporte: ' + (r.message || r.error || 'error')); setTokchartBusy(''); return }
+      await fetchCamps()
+      let msg = `Reporte creado: ${r.nombre}`
+      if (r.intentados) msg += `\nLinks enviados: ${r.enviados} de ${r.intentados}`
+      if (!r.url) msg += `\nOjo: el link público de Instagram todavía no se guarda solo; pegalo en Editar campaña.`
+      alert(msg + resumenEnvio(r))
+    } catch (e) { alert('Error: ' + e.message) }
+    setTokchartBusy('')
+  }
+
+  // Enviar a Tokchart los links que todavía no se enviaron
+  async function tokchartSync(plataforma, silencioso = false) {
+    if (!currentCamp) return
+    setTokchartBusy(plataforma)
+    try {
+      const r = await tokchartCall({ action: 'sync', campaign_id: currentCamp.id, plataforma })
+      if (!r.ok) {
+        alert('Se guardó en ROSTER, pero no se pudo enviar a Tokchart: ' + (r.message || r.error || 'error') + '\nPodés reintentar con el botón "Enviar links a Tokchart".')
+      } else if (!silencioso) {
+        alert(r.enviados ? `${r.enviados} link(s) enviados a Tokchart.` + resumenEnvio(r) : 'No había links nuevos para enviar.' + resumenEnvio(r))
+      } else if (r.omitidos) {
+        alert('Algunos links no se enviaron a Tokchart porque no están en formato de escritorio.' )
+      }
+    } catch (e) { alert('Se guardó en ROSTER, pero falló el envío a Tokchart: ' + e.message) }
+    setTokchartBusy('')
+  }
 
   // Convierte los links móviles de TikTok de esta campaña a link de escritorio
   async function convertirLinksCampana() {
@@ -1025,6 +1074,7 @@ export default function Campanas({ initialCamp = null }) {
         ok++
       }
       await fetchCamps()
+      if (ok && currentCamp.tokchart_tt_uuid) await tokchartSync('tiktok', true)
       alert(`Convertidos: ${ok}` + (fallidos.length ? `\nNo se pudieron convertir (quedan como estaban): ${fallidos.join(', ')}` : ''))
     } catch (e) {
       console.error(e)
@@ -1076,6 +1126,9 @@ export default function Campanas({ initialCamp = null }) {
       }
       setEditCIModal(false)
       await fetchCamps()
+      // Si la campaña ya tiene reporte en Tokchart, los links nuevos se envían solos
+      if (editCIForm.video_link_tt && editCIForm.video_link_tt !== ttAnterior && currentCamp?.tokchart_tt_uuid) await tokchartSync('tiktok', true)
+      if (editCIForm.video_link_ig && editCIForm.video_link_ig !== igAnterior && currentCamp?.tokchart_ig_uuid) await tokchartSync('instagram', true)
     } catch (e) { console.error(e) }
   }
 
@@ -1219,6 +1272,19 @@ export default function Campanas({ initialCamp = null }) {
                   {duplicatingCampId === currentCamp.id ? 'Duplicando...' : '⧉ Duplicar'}
                 </button>
                 <button className="btn-ghost" onClick={() => setChangeEstadoModal(true)} style={{ fontSize: 11.5, padding: '5px 10px' }}>Estado</button>
+                {!isPlaylisting && !isReadOnly && [['tiktok', 'TikTok', showTT, currentCamp.tokchart_tt_uuid], ['instagram', 'Instagram', showIG, currentCamp.tokchart_ig_uuid]]
+                  .filter(([, , visible]) => visible)
+                  .map(([plataforma, etiqueta, , uuid]) => {
+                    const enviaLinks = !isEspecial
+                    if (uuid && !enviaLinks) return null
+                    return (
+                      <button key={plataforma} className="btn-ghost" disabled={tokchartBusy === plataforma}
+                        onClick={() => uuid ? tokchartSync(plataforma) : tokchartCrear(plataforma)}
+                        style={{ fontSize: 11.5, padding: '5px 10px' }}>
+                        {tokchartBusy === plataforma ? 'Procesando…' : uuid ? `↻ Enviar links ${etiqueta === 'TikTok' ? 'TT' : 'IG'} a Tokchart` : `＋ Reporte ${etiqueta === 'TikTok' ? 'TT' : 'IG'} en Tokchart`}
+                      </button>
+                    )
+                  })}
                 {!isReadOnly && !isEspecial && campTab === 'influencers' && (
                   <button className="btn-red" onClick={openAddInfModal} style={{ fontSize: 11.5, padding: '5px 10px' }}>+ Influs</button>
                 )}
