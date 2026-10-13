@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
+import { calcMetas } from '../lib/sbMetas'
 
 // Vista de solo lectura de Social Boost para el portal del cliente.
 
@@ -37,7 +38,7 @@ export default function VistaSocialBoost({ isMobile }) {
       const sem = (await sql`SELECT id FROM sb_semanas WHERE inicio = ${inicio}`)[0]
       if (sem) {
         setSlots(await sql`
-          SELECT ss.slot, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.solicitante,
+          SELECT ss.slot, ss.prioridad, ss.objetivo, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.solicitante,
             (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
             (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
           FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
@@ -148,26 +149,27 @@ export default function VistaSocialBoost({ isMobile }) {
         <div style={{ ...card, padding: 36, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay canciones en esta semana.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-          {slots.map(s => (
+          {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => { const meta = calcMetas(slots)[s.cancion_id]?.meta ?? 0; return (
             <div key={s.slot} onClick={() => abrir(s)} style={{ ...card, borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 230 }}>
               <div style={{ padding: '14px 14px 8px' }}>
-                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Canción {s.slot}</div>
+                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>{s.prioridad ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
                 <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
                 <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
                 {s.solicitante && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 8px' }}>Pidió {primerNombre(s.solicitante)}</div>}
               </div>
               <div style={{ padding: '0 14px 4px', display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <div style={{ fontSize: 30, fontWeight: 500, letterSpacing: '-.02em' }}>{s.vids_sem}</div>
-                <div style={{ fontSize: 11.5, color: '#999' }}>videos esta semana</div>
+                <div style={{ fontSize: 11.5, color: '#999' }}>{meta > 0 ? `de ${meta} de meta` : 'videos esta semana'}</div>
               </div>
               <div style={{ padding: '0 14px 10px', fontSize: 12, color: '#888' }}>{s.vids_mes} en el mes</div>
+              {meta > 0 && <div style={{ margin: '0 14px 10px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: Math.min(100, Math.round(s.vids_sem / meta * 100)) + '%', height: '100%', background: s.vids_sem >= meta ? '#2E7D32' : '#E8313A' }} /></div>}
               <div style={{ flex: 1 }} />
               <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
                 <button style={{ ...btnGhost, flex: 1, fontSize: 12.5 }} onClick={() => abrir(s)}>Ver videos</button>
                 {s.tokchart_url && <a href={s.tokchart_url} target="_blank" rel="noopener noreferrer" style={{ ...btnGhost, fontSize: 12.5 }}>Tokchart ↗</a>}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
