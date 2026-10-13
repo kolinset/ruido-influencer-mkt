@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
 import { convertMany, isMobileTikTok } from '../lib/links'
+import { calcMetas, prioridadLibre, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
 
 // ───────── fechas (siempre texto YYYY-MM-DD, sin husos horarios) ─────────
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -51,14 +52,14 @@ export default function SocialBoost() {
   const [filtro, setFiltro] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalSlot, setModalSlot] = useState(null) // número de slot a llenar
-  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', solicitante: '' })
+  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', solicitante: '', prioridad: '' })
 
   const mesSemana = firstOfMonth(inicio)
   const prevInicio = addDays(inicio, -7)
   const esActual = inicio === mondayOf(ymd(new Date()))
 
   const SLOT_SQL = (semId) => sql`
-    SELECT ss.id AS ss_id, ss.slot, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.solicitante, c.mes::text AS mes,
+    SELECT ss.id AS ss_id, ss.slot, ss.prioridad, ss.objetivo, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.solicitante, c.mes::text AS mes,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
     FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
@@ -102,7 +103,7 @@ export default function SocialBoost() {
     try {
       const semId = await asegurarSemana()
       const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}, ${form.solicitante}) RETURNING id`
-      await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id) VALUES (${semId}, ${modalSlot}, ${c[0].id})`
+      await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, prioridad) VALUES (${semId}, ${modalSlot}, ${c[0].id}, ${form.prioridad ? Number(form.prioridad) : null})`
       setModalSlot(null); cargar()
     } catch (e) { alert('No se pudo guardar: ' + e.message) }
   }
@@ -114,6 +115,7 @@ export default function SocialBoost() {
       const usados = new Set(slots.map(s => s.slot))
       const nombres = new Set(slots.map(s => `${s.cancion}|${s.artista}`))
       let copiadas = 0
+      const prioUsadas = new Set(slots.map(x => x.prioridad).filter(Boolean))
       for (const p of lista) {
         if (nombres.has(`${p.cancion}|${p.artista}`)) continue
         let slot = slotPreferido && !usados.has(slotPreferido) ? slotPreferido : [1, 2, 3, 4, 5].find(n => !usados.has(n))
@@ -124,7 +126,9 @@ export default function SocialBoost() {
           const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '', ${p.solicitante || ''}) RETURNING id`
           cancionId = c[0].id
         }
-        await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id) VALUES (${semId}, ${slot}, ${cancionId})`
+        const prio = !prioUsadas.has(p.prioridad) && p.prioridad ? p.prioridad : [1, 2, 3, 4, 5].find(x => !prioUsadas.has(x)) || null
+        if (prio) prioUsadas.add(prio)
+        await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, prioridad) VALUES (${semId}, ${slot}, ${cancionId}, ${prio})`
         usados.add(slot); copiadas++
         slotPreferido = null
       }
@@ -133,6 +137,30 @@ export default function SocialBoost() {
     } catch (e) { alert('No se pudo copiar: ' + e.message) }
   }
 
+  const metas = calcMetas(slots)
+
+  // Cambia la prioridad de un slot; si otra canción ya la tenía, se intercambian
+  async function cambiarPrioridad(s, nueva) {
+    const p = nueva ? Number(nueva) : null
+    try {
+      const otro = p ? slots.find(x => x.prioridad === p && x.ss_id !== s.ss_id) : null
+      if (otro) await sql`UPDATE sb_semana_slots SET prioridad = ${s.prioridad}, objetivo = NULL WHERE id = ${otro.ss_id}`
+      await sql`UPDATE sb_semana_slots SET prioridad = ${p}, objetivo = NULL WHERE id = ${s.ss_id}`
+      cargar()
+    } catch (e) { alert('No se pudo cambiar la prioridad: ' + e.message) }
+  }
+
+  async function editarMeta(s) {
+    const actual = metas[s.cancion_id]
+    const r = prompt(`Meta de videos para "${s.cancion}" esta semana.\nDejalo vacío para volver a la sugerida (${actual?.sugerida}).`, s.objetivo ?? actual?.meta ?? '')
+    if (r === null) return
+    const n = r.trim() === '' ? null : parseInt(r, 10)
+    if (n !== null && (isNaN(n) || n < 0)) return alert('Poné un número válido.')
+    try { await sql`UPDATE sb_semana_slots SET objetivo = ${n} WHERE id = ${s.ss_id}`; cargar() }
+    catch (e) { alert('No se pudo guardar: ' + e.message) }
+  }
+
+  const sumaMetas = Object.values(metas).reduce((a, m) => a + m.meta, 0)
   const sel = cancionSel != null ? slots.find(s => s.slot === cancionSel) : null
   const disponiblesPrev = prevSlots.filter(p => !slots.some(s => `${s.cancion}|${s.artista}` === `${p.cancion}|${p.artista}`))
   const ultimosVis = (filtro ? ultimos.filter(u => u.cancion_id === filtro) : ultimos).slice(0, 15)
@@ -182,13 +210,25 @@ export default function SocialBoost() {
         <>
           {/* Números rápidos */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-            {[[`${kpi.mes}`, `/ ${MAX_MES}`, 'videos en el mes'], [`${kpi.semana}`, '', 'videos esta semana'], [`${slots.length}`, '/ 5', 'slots ocupados']].map(([n, de, l]) => (
+            {[[`${kpi.mes}`, `/ ${MAX_MES}`, 'videos en el mes'], [`${kpi.semana}`, `/ ${TOTAL_SEMANA}`, 'videos esta semana']].map(([n, de, l]) => (
               <div key={l} className="card" style={{ padding: '10px 16px', minWidth: 150 }}>
                 <div style={{ fontSize: 20, fontWeight: 500 }}>{n}<span style={{ fontSize: 13, color: '#999', fontWeight: 400 }}> {de}</span></div>
                 <div style={{ fontSize: 11, color: '#999' }}>{l}</div>
               </div>
             ))}
           </div>
+
+          {/* Reparto por prioridad */}
+          {slots.length > 0 && (
+            <div className="card" style={{ padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: '#666', display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'center' }}>
+              <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA' }}>Reparto sugerido ({TOTAL_SEMANA} videos)</span>
+              {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99)).map(s => (
+                <span key={s.ss_id}>{s.prioridad ? '#' + s.prioridad : 'sin prioridad'} <b style={{ color: '#222' }}>{metas[s.cancion_id]?.meta}</b> <span style={{ color: '#AAA' }}>({PCT_PRIORIDAD[(s.prioridad || 1) - 1]}%)</span></span>
+              ))}
+              {sumaMetas !== TOTAL_SEMANA && <span style={{ color: '#C0392B' }}>· las metas suman {sumaMetas}, no {TOTAL_SEMANA}</span>}
+              {slots.some(s => !s.prioridad) && <span style={{ color: '#C0392B' }}>· falta asignar prioridad</span>}
+            </div>
+          )}
 
           {/* Los 5 slots */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
@@ -198,7 +238,7 @@ export default function SocialBoost() {
                 return (
                   <div key={n} className="card" style={{ borderStyle: 'dashed', background: 'transparent', minHeight: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#AAA' }}>
                     <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' }}>Slot {n}</div>
-                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', solicitante: '' }); setModalSlot(n) }}>＋ Agregar canción</button>
+                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', solicitante: '', prioridad: prioridadLibre(slots) || '' }); setModalSlot(n) }}>＋ Agregar canción</button>
                     {disponiblesPrev.length > 0 && (
                       <select className="input" style={{ fontSize: 12, maxWidth: 170 }} value=""
                         onChange={e => { const p = prevSlots.find(x => x.cancion_id === e.target.value); if (p) copiar([p], n) }}>
@@ -209,25 +249,37 @@ export default function SocialBoost() {
                   </div>
                 )
               }
-              const pct = Math.min(100, Math.round((s.vids_mes / 24) * 100))
+              const m = metas[s.cancion_id]?.meta ?? 0
+              const pct = m > 0 ? Math.min(100, Math.round((s.vids_sem / m) * 100)) : 0
+              const falta = Math.max(0, m - s.vids_sem)
+              const sinVideos = s.vids_sem === 0
               return (
                 <div key={n} className="card" onClick={() => { setCancionSel(n); setVista('cancion') }}
                   style={{ borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 300, transition: 'box-shadow .12s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
                   <div style={{ padding: '14px 14px 10px' }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {n}</div>
-                    <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                      <select value={s.prioridad || ''} onChange={e => cambiarPrioridad(s, e.target.value)}
+                        style={{ fontSize: 11, fontWeight: 600, color: s.prioridad ? '#fff' : '#C0392B', background: s.prioridad ? '#E8313A' : '#FFF', border: s.prioridad ? 'none' : '1px solid #C0392B', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
+                        <option value="">Sin prioridad</option>
+                        {[1, 2, 3, 4, 5].map(p => <option key={p} value={p}>Prioridad {p}</option>)}
+                      </select>
+                      <span style={{ fontSize: 10, color: '#BBB' }}>Slot {n}</span>
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 500, marginTop: 8, lineHeight: 1.25 }}>{s.cancion}</div>
                     <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
                     {s.solicitante && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 8px' }}>Pidió {primerNombre(s.solicitante)}</div>}
                   </div>
                   <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'baseline', gap: 6 }}>
                     <div style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-.02em' }}>{s.vids_sem}</div>
-                    <div style={{ fontSize: 11.5, color: '#999' }}>videos esta semana</div>
+                    <div style={{ fontSize: 11.5, color: '#999' }}>de <span title="Tocá para cambiar la meta" onClick={e => { e.stopPropagation(); editarMeta(s) }} style={{ textDecoration: 'underline dotted', cursor: 'pointer', color: '#555' }}>{m}</span> de meta</div>
                   </div>
-                  <div style={{ padding: '0 14px 10px', fontSize: 12, color: '#888' }}>{s.vids_mes} en el mes</div>
+                  <div style={{ padding: '0 14px 10px', fontSize: 12, color: falta === 0 ? '#2E7D32' : (sinVideos ? '#C0392B' : '#888') }}>
+                    {falta === 0 ? 'Meta cumplida ✓' : `Faltan ${falta}`}{s.vids_sem > m && m > 0 ? ` · +${s.vids_sem - m} extra` : ''} · {s.vids_mes} en el mes
+                  </div>
                   <div style={{ margin: '0 14px 12px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: pct + '%', height: '100%', background: '#E8313A' }} />
+                    <div style={{ width: pct + '%', height: '100%', background: falta === 0 ? '#2E7D32' : '#E8313A' }} />
                   </div>
                   <div style={{ flex: 1 }} />
                   <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
@@ -295,6 +347,14 @@ export default function SocialBoost() {
           <select className="input" value={form.solicitante} onChange={e => setForm(f => ({ ...f, solicitante: e.target.value }))}>
             <option value="">Sin indicar</option>
             {SOLICITANTES.map(n => <option key={n} value={n}>{n}</option>)}
+          </select></div>
+        <div className="fg"><label className="label">Prioridad esta semana</label>
+          <select className="input" value={form.prioridad} onChange={e => setForm(f => ({ ...f, prioridad: e.target.value }))}>
+            <option value="">Sin asignar</option>
+            {[1, 2, 3, 4, 5].map(p => {
+              const ocupada = slots.find(x => x.prioridad === p)
+              return <option key={p} value={p} disabled={!!ocupada}>{p}{p === 1 ? ' (la más importante)' : ''}{ocupada ? ` · ya es de ${ocupada.cancion}` : ''}</option>
+            })}
           </select></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setModalSlot(null)}>Cancelar</button>
