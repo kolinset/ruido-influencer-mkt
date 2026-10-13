@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { calcMetas } from '../lib/sbMetas'
 
 // Página privada de la editora: ve las canciones activas de la semana y agrega links.
 // No usa login: se entra con el link secreto (?editor=...). No toca nada más de ROSTER.
@@ -131,15 +132,19 @@ export default function VistaEditor({ token }) {
           : data.slots.length === 0 ? <div style={{ ...card, padding: 36, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay canciones activas esta semana.</div>
           : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {data.slots.map(s => {
+              {[...data.slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => {
+                const meta = calcMetas(data.slots)[s.cancion_id]?.meta ?? 0
+                const falta = Math.max(0, meta - s.vids_sem)
                 const vids = data.videos.filter(v => v.cancion_id === s.cancion_id)
                 const open = abierta === s.cancion_id
                 return (
                   <div key={s.cancion_id} style={{ ...card, borderLeft: '3px solid #E8313A', padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <div style={{ minWidth: 0 }}>
+                        {s.prioridad && <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 600, color: '#fff', background: '#E8313A', borderRadius: 5, padding: '2px 7px', marginBottom: 5 }}>Prioridad {s.prioridad}</span>}
                         <div style={{ fontSize: 15.5, fontWeight: 500 }}>{s.cancion}</div>
                         <div style={{ fontSize: 12.5, color: '#999' }}>{s.artista || '—'} · {s.vids_sem} esta semana · {s.vids_mes} en el mes</div>
+                        {meta > 0 && <div style={{ fontSize: 13, marginTop: 3, color: falta === 0 ? '#2E7D32' : '#C0392B', fontWeight: 500 }}>{falta === 0 ? `Meta cumplida (${meta}) ✓` : `Meta de la semana: ${meta} · faltan ${falta}`}</div>}
                       </div>
                       <button className="btn-red" style={{ fontSize: 13 }} onClick={() => { setAbierta(open ? null : s.cancion_id); setAviso(null); setTexto('') }}>
                         {open ? 'Cerrar' : '＋ Agregar links'}
