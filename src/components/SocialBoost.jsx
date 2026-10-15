@@ -52,14 +52,14 @@ export default function SocialBoost() {
   const [filtro, setFiltro] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalSlot, setModalSlot] = useState(null) // número de slot a llenar
-  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', solicitante: '', prioridad: '' })
+  const [form, setForm] = useState({ cancion: '', artista: '', tokchart_url: '', audio_url: '', solicitante: '', prioridad: '' })
 
   const mesSemana = firstOfMonth(inicio)
   const prevInicio = addDays(inicio, -7)
   const esActual = inicio === mondayOf(ymd(new Date()))
 
   const SLOT_SQL = (semId) => sql`
-    SELECT ss.id AS ss_id, ss.slot, ss.prioridad, ss.objetivo, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.notas, c.solicitante, c.mes::text AS mes,
+    SELECT ss.id AS ss_id, ss.slot, ss.prioridad, ss.objetivo, ss.cuenta_id, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.audio_url, c.notas, c.solicitante, c.mes::text AS mes,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
       (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
     FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
@@ -102,7 +102,7 @@ export default function SocialBoost() {
     if (!form.cancion.trim()) return alert('Falta el nombre de la canción')
     try {
       const semId = await asegurarSemana()
-      const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}, ${form.solicitante}) RETURNING id`
+      const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, audio_url, solicitante) VALUES (${mesSemana}, ${form.artista}, ${form.cancion.trim()}, ${form.tokchart_url.trim()}, ${form.audio_url.trim()}, ${form.solicitante}) RETURNING id`
       await sql`INSERT INTO sb_semana_slots (semana_id, slot, cancion_id, prioridad) VALUES (${semId}, ${modalSlot}, ${c[0].id}, ${form.prioridad ? Number(form.prioridad) : null})`
       setModalSlot(null); cargar()
     } catch (e) { alert('No se pudo guardar: ' + e.message) }
@@ -123,7 +123,7 @@ export default function SocialBoost() {
         let cancionId = p.cancion_id
         if (p.mes !== mesSemana) {
           // Cambió el mes: ficha nueva (el Tokchart es mensual)
-          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '', ${p.solicitante || ''}) RETURNING id`
+          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, audio_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '', ${p.audio_url || ''}, ${p.solicitante || ''}) RETURNING id`
           cancionId = c[0].id
         }
         const prio = !prioUsadas.has(p.prioridad) && p.prioridad ? p.prioridad : [1, 2, 3, 4, 5].find(x => !prioUsadas.has(x)) || null
@@ -238,7 +238,7 @@ export default function SocialBoost() {
                 return (
                   <div key={n} className="card" style={{ borderStyle: 'dashed', background: 'transparent', minHeight: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#AAA' }}>
                     <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase' }}>Slot {n}</div>
-                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', solicitante: '', prioridad: prioridadLibre(slots) || '' }); setModalSlot(n) }}>＋ Agregar canción</button>
+                    <button className="btn-ghost" onClick={() => { setForm({ cancion: '', artista: '', tokchart_url: '', audio_url: '', solicitante: '', prioridad: prioridadLibre(slots) || '' }); setModalSlot(n) }}>＋ Agregar canción</button>
                     {disponiblesPrev.length > 0 && (
                       <select className="input" style={{ fontSize: 12, maxWidth: 170 }} value=""
                         onChange={e => { const p = prevSlots.find(x => x.cancion_id === e.target.value); if (p) copiar([p], n) }}>
@@ -284,6 +284,7 @@ export default function SocialBoost() {
                   <div style={{ flex: 1 }} />
                   <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
                     <button className="btn-red" style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }} onClick={() => { setCancionSel(n); setVista('cancion') }}>＋ Agregar videos</button>
+                    {!s.audio_url && <span className="btn-ghost" title="Falta el link del audio" style={{ fontSize: 11.5, padding: '8px 10px', color: '#C0392B', cursor: 'default' }}>sin audio</span>}
                     {s.tokchart_url
                       ? <a href={s.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12.5, padding: '8px 10px' }}>Tokchart ↗</a>
                       : <span className="btn-ghost" style={{ fontSize: 11.5, padding: '8px 10px', color: '#C0392B', cursor: 'default' }}>sin Tokchart</span>}
@@ -343,6 +344,8 @@ export default function SocialBoost() {
           <input className="input" value={form.artista} onChange={e => setForm(f => ({ ...f, artista: e.target.value }))} /></div>
         <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
           <input className="input" value={form.tokchart_url} onChange={e => setForm(f => ({ ...f, tokchart_url: e.target.value }))} placeholder="https://…" /></div>
+        <div className="fg"><label className="label">Link del audio (para la editora)</label>
+          <input className="input" value={form.audio_url} onChange={e => setForm(f => ({ ...f, audio_url: e.target.value }))} placeholder="https://…" /></div>
         <div className="fg"><label className="label">Solicitada por</label>
           <select className="input" value={form.solicitante} onChange={e => setForm(f => ({ ...f, solicitante: e.target.value }))}>
             <option value="">Sin indicar</option>
@@ -451,13 +454,13 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   }
 
   function abrirEditar() {
-    setFormEdit({ cancion: info.cancion, artista: info.artista || '', tokchart_url: info.tokchart_url || '', notas: info.notas || '', solicitante: info.solicitante || '' })
+    setFormEdit({ cancion: info.cancion, artista: info.artista || '', tokchart_url: info.tokchart_url || '', audio_url: info.audio_url || '', notas: info.notas || '', solicitante: info.solicitante || '' })
     setModalEdit(true)
   }
   async function guardarEditar() {
     if (!formEdit.cancion.trim()) return alert('Falta el nombre')
     try {
-      await sql`UPDATE sb_canciones SET cancion=${formEdit.cancion.trim()}, artista=${formEdit.artista}, tokchart_url=${formEdit.tokchart_url.trim()}, notas=${formEdit.notas}, solicitante=${formEdit.solicitante || ''} WHERE id=${slot.cancion_id}`
+      await sql`UPDATE sb_canciones SET cancion=${formEdit.cancion.trim()}, artista=${formEdit.artista}, tokchart_url=${formEdit.tokchart_url.trim()}, audio_url=${(formEdit.audio_url || '').trim()}, notas=${formEdit.notas}, solicitante=${formEdit.solicitante || ''} WHERE id=${slot.cancion_id}`
       setInfo(i => ({ ...i, ...formEdit }))
       setModalEdit(false); onChanged()
     } catch (e) { alert(e.message) }
@@ -485,6 +488,9 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
             {info.tokchart_url
               ? <a href={info.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>Reporte Tokchart ↗</a>
               : <span style={{ fontSize: 12, color: '#C0392B', alignSelf: 'center' }}>Falta el link de Tokchart</span>}
+            {info.audio_url
+              ? <a href={info.audio_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>♪ Audio ↗</a>
+              : <span style={{ fontSize: 12, color: '#C0392B', alignSelf: 'center' }}>Falta el audio</span>}
             <button className="btn-ghost" onClick={abrirEditar}>Editar</button>
             <button className="btn-ghost" onClick={quitarDeSemana}>Quitar de la semana</button>
           </div>
@@ -563,6 +569,8 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
           <input className="input" value={formEdit.artista || ''} onChange={e => setFormEdit(f => ({ ...f, artista: e.target.value }))} /></div>
         <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
           <input className="input" value={formEdit.tokchart_url || ''} onChange={e => setFormEdit(f => ({ ...f, tokchart_url: e.target.value }))} /></div>
+        <div className="fg"><label className="label">Link del audio (para la editora)</label>
+          <input className="input" value={formEdit.audio_url || ''} onChange={e => setFormEdit(f => ({ ...f, audio_url: e.target.value }))} placeholder="https://…" /></div>
         <div className="fg"><label className="label">Solicitada por</label>
           <select className="input" value={formEdit.solicitante || ''} onChange={e => setFormEdit(f => ({ ...f, solicitante: e.target.value }))}>
             <option value="">Sin indicar</option>
