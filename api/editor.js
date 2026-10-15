@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     if (!tk.rows.length) return res.status(401).json({ error: 'Este link no es válido o fue desactivado.' })
     const editor = tk.rows[0].nombre
 
-    const sem = (await pool.query('SELECT id FROM sb_semanas WHERE inicio = $1', [inicio])).rows[0]
+    const sem = (await pool.query('SELECT id, sin_prioridad FROM sb_semanas WHERE inicio = $1', [inicio])).rows[0]
 
     if (action === 'state') {
       const cuentas = (await pool.query('SELECT id, nombre, handle FROM sb_cuentas WHERE activa = true ORDER BY nombre')).rows
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       const videos = (await pool.query(`
         SELECT id, cancion_id, link_web, link_original, handle, cuenta_id, created_at
         FROM sb_videos WHERE semana_id = $1 ORDER BY created_at DESC LIMIT 300`, [sem.id])).rows
-      return res.status(200).json({ slots, videos, cuentas })
+      return res.status(200).json({ slots, videos, cuentas, sin_prioridad: !!sem.sin_prioridad })
     }
 
     if (action === 'add') {
