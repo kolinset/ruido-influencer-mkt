@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       const cuentas = (await pool.query('SELECT id, nombre, handle FROM sb_cuentas WHERE activa = true ORDER BY nombre')).rows
       if (!sem) return res.status(200).json({ slots: [], videos: [], cuentas })
       const slots = (await pool.query(`
-        SELECT ss.slot, ss.prioridad, ss.objetivo, c.id AS cancion_id, c.cancion, c.artista,
+        SELECT ss.slot, ss.prioridad, ss.objetivo, c.id AS cancion_id, c.cancion, c.artista, c.audio_url,
           (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
           (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
         FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
