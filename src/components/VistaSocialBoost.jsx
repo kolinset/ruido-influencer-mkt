@@ -24,6 +24,7 @@ export default function VistaSocialBoost({ isMobile }) {
   const [inicio, setInicio] = useState(mondayOf(ymd(new Date())))
   const [slots, setSlots] = useState([])
   const [kpi, setKpi] = useState({ mes: 0, semana: 0 })
+  const [igual, setIgual] = useState(false)
   const [reparto, setReparto] = useState([])
   const [loading, setLoading] = useState(true)
   const [abierta, setAbierta] = useState(null)   // canción abierta (slot)
@@ -35,7 +36,8 @@ export default function VistaSocialBoost({ isMobile }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const sem = (await sql`SELECT id FROM sb_semanas WHERE inicio = ${inicio}`)[0]
+      const sem = (await sql`SELECT id, sin_prioridad FROM sb_semanas WHERE inicio = ${inicio}`)[0]
+      setIgual(!!sem?.sin_prioridad)
       if (sem) {
         setSlots(await sql`
           SELECT ss.slot, ss.prioridad, ss.objetivo, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.solicitante,
@@ -149,10 +151,10 @@ export default function VistaSocialBoost({ isMobile }) {
         <div style={{ ...card, padding: 36, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay canciones en esta semana.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-          {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => { const meta = calcMetas(slots, totalRestante(kpi.semana - slots.reduce((a, x) => a + x.vids_sem, 0)))[s.cancion_id]?.meta ?? 0; return (
+          {[...slots].sort((a, b) => (igual ? 0 : (a.prioridad ?? 99) - (b.prioridad ?? 99)) || a.slot - b.slot).map(s => { const meta = calcMetas(slots, totalRestante(kpi.semana - slots.reduce((a, x) => a + x.vids_sem, 0)), igual)[s.cancion_id]?.meta ?? 0; return (
             <div key={s.slot} onClick={() => abrir(s)} style={{ ...card, borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 230 }}>
               <div style={{ padding: '14px 14px 8px' }}>
-                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>{s.prioridad ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
+                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>{s.prioridad && !igual ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
                 <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
                 <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
                 {s.solicitante && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 8px' }}>Pidió {primerNombre(s.solicitante)}</div>}
