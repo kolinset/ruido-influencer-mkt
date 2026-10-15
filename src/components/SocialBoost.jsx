@@ -69,7 +69,7 @@ export default function SocialBoost() {
     try {
       const cu = await sql`SELECT id, nombre, handle, notas, activa FROM sb_cuentas ORDER BY nombre`
       setCuentas(cu)
-      const sem = (await sql`SELECT id, inicio::text AS inicio, mes::text AS mes FROM sb_semanas WHERE inicio = ${inicio}`)[0] || null
+      const sem = (await sql`SELECT id, inicio::text AS inicio, mes::text AS mes, sin_prioridad FROM sb_semanas WHERE inicio = ${inicio}`)[0] || null
       setSemana(sem)
       setSlots(sem ? await SLOT_SQL(sem.id) : [])
       const prev = (await sql`SELECT id FROM sb_semanas WHERE inicio = ${prevInicio}`)[0]
@@ -139,7 +139,16 @@ export default function SocialBoost() {
 
   const huerfanos = Math.max(0, kpi.semana - slots.reduce((a, s) => a + s.vids_sem, 0))
   const totalReparto = totalRestante(huerfanos)
-  const metas = calcMetas(slots, totalReparto)
+  const igual = !!semana?.sin_prioridad
+  const metas = calcMetas(slots, totalReparto, igual)
+
+  async function toggleIgual() {
+    try {
+      const semId = await asegurarSemana()
+      await sql`UPDATE sb_semanas SET sin_prioridad = ${!igual} WHERE id = ${semId}`
+      cargar()
+    } catch (e) { alert('No se pudo cambiar: ' + e.message) }
+  }
 
   // Cambia la prioridad de un slot; si otra canción ya la tenía, se intercambian
   async function cambiarPrioridad(s, nueva) {
@@ -187,6 +196,10 @@ export default function SocialBoost() {
             <button className="btn-ghost" style={{ fontWeight: 500 }} onClick={() => setInicio(mondayOf(ymd(new Date())))}>Esta semana</button>
             <button className="btn-ghost" onClick={() => setInicio(addDays(inicio, 7))}>→</button>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, fontSize: 12.5, color: '#555', cursor: 'pointer' }}>
+            <input type="checkbox" checked={igual} onChange={toggleIgual} />
+            Sin prioridades esta semana (mismo reparto para todas)
+          </label>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div className="card" style={{ padding: '12px 14px', width: 320, maxWidth: '100%' }}>
@@ -223,12 +236,12 @@ export default function SocialBoost() {
           {/* Reparto por prioridad */}
           {slots.length > 0 && (
             <div className="card" style={{ padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: '#666', display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'center' }}>
-              <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA' }}>Reparto sugerido ({totalReparto} videos{huerfanos > 0 ? ` · ${huerfanos} ya subidos de canciones que salieron` : ''})</span>
-              {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99)).map(s => (
-                <span key={s.ss_id}>{s.prioridad ? '#' + s.prioridad : 'sin prioridad'} <b style={{ color: '#222' }}>{metas[s.cancion_id]?.meta}</b> <span style={{ color: '#AAA' }}>({PCT_PRIORIDAD[(s.prioridad || 1) - 1]}%)</span></span>
+              <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA' }}>{igual ? 'Reparto igual para todas' : 'Reparto sugerido'} ({totalReparto} videos{huerfanos > 0 ? ` · ${huerfanos} ya subidos de canciones que salieron` : ''})</span>
+              {[...slots].sort((a, b) => (igual ? 0 : (a.prioridad ?? 99) - (b.prioridad ?? 99)) || a.slot - b.slot).map(s => (
+                <span key={s.ss_id}>{igual ? s.cancion : (s.prioridad ? '#' + s.prioridad : 'sin prioridad')} <b style={{ color: '#222' }}>{metas[s.cancion_id]?.meta}</b>{!igual && <span style={{ color: '#AAA' }}> ({PCT_PRIORIDAD[(s.prioridad || 1) - 1]}%)</span>}</span>
               ))}
               {sumaMetas !== totalReparto && <span style={{ color: '#C0392B' }}>· las metas suman {sumaMetas}, no {totalReparto}</span>}
-              {slots.some(s => !s.prioridad) && <span style={{ color: '#C0392B' }}>· falta asignar prioridad</span>}
+              {!igual && slots.some(s => !s.prioridad) && <span style={{ color: '#C0392B' }}>· falta asignar prioridad</span>}
             </div>
           )}
 
@@ -262,12 +275,12 @@ export default function SocialBoost() {
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
                   <div style={{ padding: '14px 14px 10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                      <select value={s.prioridad || ''} onChange={e => cambiarPrioridad(s, e.target.value)}
+                      {igual ? <span style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {n}</span> : <select value={s.prioridad || ''} onChange={e => cambiarPrioridad(s, e.target.value)}
                         style={{ fontSize: 11, fontWeight: 600, color: s.prioridad ? '#fff' : '#C0392B', background: s.prioridad ? '#E8313A' : '#FFF', border: s.prioridad ? 'none' : '1px solid #C0392B', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
                         <option value="">Sin prioridad</option>
                         {[1, 2, 3, 4, 5].map(p => <option key={p} value={p}>Prioridad {p}</option>)}
-                      </select>
-                      <span style={{ fontSize: 10, color: '#BBB' }}>Slot {n}</span>
+                      </select>}
+                      {!igual && <span style={{ fontSize: 10, color: '#BBB' }}>Slot {n}</span>}
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 500, marginTop: 8, lineHeight: 1.25 }}>{s.cancion}</div>
                     <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
@@ -353,14 +366,14 @@ export default function SocialBoost() {
             <option value="">Sin indicar</option>
             {SOLICITANTES.map(n => <option key={n} value={n}>{n}</option>)}
           </select></div>
-        <div className="fg"><label className="label">Prioridad esta semana</label>
+        {!igual && <div className="fg"><label className="label">Prioridad esta semana</label>
           <select className="input" value={form.prioridad} onChange={e => setForm(f => ({ ...f, prioridad: e.target.value }))}>
             <option value="">Sin asignar</option>
             {[1, 2, 3, 4, 5].map(p => {
               const ocupada = slots.find(x => x.prioridad === p)
               return <option key={p} value={p} disabled={!!ocupada}>{p}{p === 1 ? ' (la más importante)' : ''}{ocupada ? ` · ya es de ${ocupada.cancion}` : ''}</option>
             })}
-          </select></div>
+          </select></div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setModalSlot(null)}>Cancelar</button>
           <button className="btn-red" onClick={guardarNueva}>Guardar</button>
