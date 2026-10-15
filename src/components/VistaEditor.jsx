@@ -146,9 +146,15 @@ export default function VistaEditor({ token }) {
                         <div style={{ fontSize: 12.5, color: '#999' }}>{s.artista || '—'} · {s.vids_sem} esta semana · {s.vids_mes} en el mes</div>
                         {meta > 0 && <div style={{ fontSize: 13, marginTop: 3, color: falta === 0 ? '#2E7D32' : '#C0392B', fontWeight: 500 }}>{falta === 0 ? `Meta cumplida (${meta}) ✓` : `Meta de la semana: ${meta} · faltan ${falta}`}</div>}
                       </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {s.audio_url && <>
+                        <a href={s.audio_url} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ fontSize: 13, textDecoration: 'none' }}>♪ Abrir audio</a>
+                        <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => navigator.clipboard.writeText(s.audio_url).then(() => alert('Link del audio copiado')).catch(() => prompt('Copiá el link:', s.audio_url))}>Copiar</button>
+                      </>}
                       <button className="btn-red" style={{ fontSize: 13 }} onClick={() => { setAbierta(open ? null : s.cancion_id); setAviso(null); setTexto('') }}>
                         {open ? 'Cerrar' : '＋ Agregar links'}
                       </button>
+                      </div>
                     </div>
 
                     {open && (
