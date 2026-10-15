@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
-import { calcMetas } from '../lib/sbMetas'
+import { calcMetas, totalRestante } from '../lib/sbMetas'
 
 // Vista de solo lectura de Social Boost para el portal del cliente.
 
@@ -149,7 +149,7 @@ export default function VistaSocialBoost({ isMobile }) {
         <div style={{ ...card, padding: 36, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Todavía no hay canciones en esta semana.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-          {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => { const meta = calcMetas(slots)[s.cancion_id]?.meta ?? 0; return (
+          {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => { const meta = calcMetas(slots, totalRestante(kpi.semana - slots.reduce((a, x) => a + x.vids_sem, 0)))[s.cancion_id]?.meta ?? 0; return (
             <div key={s.slot} onClick={() => abrir(s)} style={{ ...card, borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 230 }}>
               <div style={{ padding: '14px 14px 8px' }}>
                 <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>{s.prioridad ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
