@@ -38,3 +38,9 @@ export function prioridadLibre(slots) {
   const usadas = new Set(slots.map(s => s.prioridad).filter(Boolean))
   return [1, 2, 3, 4, 5].find(p => !usadas.has(p)) ?? null
 }
+
+// Videos de la semana que pertenecen a canciones que ya NO están activas (salieron a mitad de semana)
+// y que se descuentan del total: el reparto se hace con lo que queda.
+export function totalRestante(huerfanos, total = TOTAL_SEMANA) {
+  return Math.max(0, total - Math.max(0, huerfanos || 0))
+}
