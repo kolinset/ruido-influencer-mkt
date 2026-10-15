@@ -9,13 +9,14 @@ export const PCT_PRIORIDAD = [30, 25, 20, 15, 10] // prioridad 1 a 5 (suman 100)
 // - Si hay menos de 5 canciones, se usan los porcentajes de las prioridades más altas, reescalados a 100%.
 // - Redondeo: se reparte el resto a quienes tienen mayor decimal; en empate gana la prioridad más alta.
 // - Si una canción tiene una meta puesta a mano (objetivo), esa se respeta.
-export function calcMetas(slots, total = TOTAL_SEMANA) {
+// Si igual = true (semana sin prioridades), todas las canciones reciben lo mismo.
+export function calcMetas(slots, total = TOTAL_SEMANA, igual = false) {
   const orden = [...slots].sort((a, b) =>
-    (a.prioridad ?? 99) - (b.prioridad ?? 99) || (a.slot ?? 0) - (b.slot ?? 0))
+    (igual ? 0 : (a.prioridad ?? 99) - (b.prioridad ?? 99)) || (a.slot ?? 0) - (b.slot ?? 0))
   const n = orden.length
   const out = {}
   if (!n) return out
-  const pcts = PCT_PRIORIDAD.slice(0, n)
+  const pcts = igual ? Array(n).fill(100 / n) : PCT_PRIORIDAD.slice(0, n)
   const suma = pcts.reduce((a, b) => a + b, 0)
   const crudo = pcts.map(p => total * p / suma)
   const base = crudo.map(Math.floor)
