@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
 import { convertMany, isMobileTikTok } from '../lib/links'
-import { calcMetas, prioridadLibre, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
+import { calcMetas, prioridadLibre, totalRestante, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
 
 // ───────── fechas (siempre texto YYYY-MM-DD, sin husos horarios) ─────────
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -137,7 +137,9 @@ export default function SocialBoost() {
     } catch (e) { alert('No se pudo copiar: ' + e.message) }
   }
 
-  const metas = calcMetas(slots)
+  const huerfanos = Math.max(0, kpi.semana - slots.reduce((a, s) => a + s.vids_sem, 0))
+  const totalReparto = totalRestante(huerfanos)
+  const metas = calcMetas(slots, totalReparto)
 
   // Cambia la prioridad de un slot; si otra canción ya la tenía, se intercambian
   async function cambiarPrioridad(s, nueva) {
@@ -221,11 +223,11 @@ export default function SocialBoost() {
           {/* Reparto por prioridad */}
           {slots.length > 0 && (
             <div className="card" style={{ padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: '#666', display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'center' }}>
-              <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA' }}>Reparto sugerido ({TOTAL_SEMANA} videos)</span>
+              <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA' }}>Reparto sugerido ({totalReparto} videos{huerfanos > 0 ? ` · ${huerfanos} ya subidos de canciones que salieron` : ''})</span>
               {[...slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99)).map(s => (
                 <span key={s.ss_id}>{s.prioridad ? '#' + s.prioridad : 'sin prioridad'} <b style={{ color: '#222' }}>{metas[s.cancion_id]?.meta}</b> <span style={{ color: '#AAA' }}>({PCT_PRIORIDAD[(s.prioridad || 1) - 1]}%)</span></span>
               ))}
-              {sumaMetas !== TOTAL_SEMANA && <span style={{ color: '#C0392B' }}>· las metas suman {sumaMetas}, no {TOTAL_SEMANA}</span>}
+              {sumaMetas !== totalReparto && <span style={{ color: '#C0392B' }}>· las metas suman {sumaMetas}, no {totalReparto}</span>}
               {slots.some(s => !s.prioridad) && <span style={{ color: '#C0392B' }}>· falta asignar prioridad</span>}
             </div>
           )}
