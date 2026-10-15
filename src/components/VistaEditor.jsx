@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { calcMetas } from '../lib/sbMetas'
+import { calcMetas, totalRestante } from '../lib/sbMetas'
 
 // Página privada de la editora: ve las canciones activas de la semana y agrega links.
 // No usa login: se entra con el link secreto (?editor=...). No toca nada más de ROSTER.
@@ -133,7 +133,8 @@ export default function VistaEditor({ token }) {
           : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[...data.slots].sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99) || a.slot - b.slot).map(s => {
-                const meta = calcMetas(data.slots)[s.cancion_id]?.meta ?? 0
+                const huerfanos = data.videos.filter(v => !data.slots.some(x => x.cancion_id === v.cancion_id)).length
+                const meta = calcMetas(data.slots, totalRestante(huerfanos))[s.cancion_id]?.meta ?? 0
                 const falta = Math.max(0, meta - s.vids_sem)
                 const vids = data.videos.filter(v => v.cancion_id === s.cancion_id)
                 const open = abierta === s.cancion_id
