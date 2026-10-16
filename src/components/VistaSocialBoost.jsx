@@ -18,7 +18,7 @@ function rangoSemana(inicio) {
 }
 const MAX_MES = 120
 const primerNombre = n => (n || '').split(' ')[0]
-const COLORES = ['#E8313A', '#3B5BDB', '#1D9E75', '#BA7517', '#7C3AED', '#0369A1', '#C2185B']
+const COLORES = ['#C4501A', '#3B5BDB', '#1D9E75', '#BA7517', '#7C3AED', '#0369A1', '#C2185B']
 
 export default function VistaSocialBoost({ isMobile }) {
   const [inicio, setInicio] = useState(mondayOf(ymd(new Date())))
@@ -66,7 +66,7 @@ export default function VistaSocialBoost({ isMobile }) {
     return (
       <div>
         <button style={{ ...btnGhost, marginBottom: 14 }} onClick={() => setAbierta(null)}>← {tituloSemana(inicio)}</button>
-        <div style={{ ...card, padding: 18, marginBottom: 14, borderTop: '3px solid #E8313A' }}>
+        <div style={{ ...card, padding: 18, marginBottom: 14, borderTop: '3px solid #C4501A' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ fontSize: 20, fontWeight: 500 }}>{abierta.cancion}</div>
@@ -141,9 +141,9 @@ export default function VistaSocialBoost({ isMobile }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
           {[...slots].sort((a, b) => (igual ? 0 : (a.prioridad ?? 99) - (b.prioridad ?? 99)) || a.slot - b.slot).map(s => { const meta = calcMetas(slots, totalRestante(kpi.semana - slots.reduce((a, x) => a + x.vids_sem, 0)), igual)[s.cancion_id]?.meta ?? 0; return (
-            <div key={s.slot} onClick={() => abrir(s)} style={{ ...card, borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 230 }}>
+            <div key={s.slot} onClick={() => abrir(s)} style={{ ...card, borderTop: '3px solid #C4501A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 230 }}>
               <div style={{ padding: '14px 14px 8px' }}>
-                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>{s.prioridad && !igual ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
+                <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#C4501A', fontWeight: 600 }}>{s.prioridad && !igual ? `Prioridad ${s.prioridad}` : `Canción ${s.slot}`}</div>
                 <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, lineHeight: 1.25 }}>{s.cancion}</div>
                 <div style={{ fontSize: 12, color: '#999' }}>{s.artista || '—'}</div>
                 {s.solicitante && <div style={{ display: 'inline-block', marginTop: 8, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 8px' }}>Pidió {primerNombre(s.solicitante)}</div>}
@@ -153,7 +153,7 @@ export default function VistaSocialBoost({ isMobile }) {
                 <div style={{ fontSize: 11.5, color: '#999' }}>{meta > 0 ? `de ${meta} de meta` : 'videos esta semana'}</div>
               </div>
               <div style={{ padding: '0 14px 10px', fontSize: 12, color: '#888' }}>{s.vids_mes} en el mes</div>
-              {meta > 0 && <div style={{ margin: '0 14px 10px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: Math.min(100, Math.round(s.vids_sem / meta * 100)) + '%', height: '100%', background: s.vids_sem >= meta ? '#2E7D32' : '#E8313A' }} /></div>}
+              {meta > 0 && <div style={{ margin: '0 14px 10px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: Math.min(100, Math.round(s.vids_sem / meta * 100)) + '%', height: '100%', background: s.vids_sem >= meta ? '#2E7D32' : '#C4501A' }} /></div>}
               <div style={{ flex: 1 }} />
               <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
                 <button style={{ ...btnGhost, flex: 1, fontSize: 12.5 }} onClick={() => abrir(s)}>Ver videos</button>

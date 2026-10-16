@@ -3,18 +3,18 @@ import sql from '../lib/db'
 import Modal from './Modal'
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 const PRESET_COLORS = [
-  '#E8313A', '#3B5BDB', '#1D9E75', '#7C3AED',
+  '#C4501A', '#3B5BDB', '#1D9E75', '#7C3AED',
   '#BA7517', '#C2185B', '#0369A1', '#2E7D32',
   '#111111', '#E87D1E',
 ]
@@ -32,7 +32,7 @@ function ClientAvatar({ nombre, color, size = 40 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 10,
-      background: color || '#E8313A',
+      background: color || '#C4501A',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.4, fontWeight: 700, color: '#fff', flexShrink: 0,
       letterSpacing: '-.02em',
@@ -42,7 +42,7 @@ function ClientAvatar({ nombre, color, size = 40 }) {
   )
 }
 
-const EMPTY_FORM = { nombre: '', color: '#E8313A', logo_url: '' }
+const EMPTY_FORM = { nombre: '', color: '#C4501A', logo_url: '' }
 
 export default function Clientes({ onSelectCliente }) {
   const [clients, setClients] = useState([])
@@ -81,7 +81,7 @@ export default function Clientes({ onSelectCliente }) {
   }
 
   function openEdit(client) {
-    setForm({ nombre: client.nombre, color: client.color || '#E8313A', logo_url: client.logo_url || '' })
+    setForm({ nombre: client.nombre, color: client.color || '#C4501A', logo_url: client.logo_url || '' })
     setEditId(client.id)
     setModalOpen(true)
   }
@@ -154,7 +154,7 @@ export default function Clientes({ onSelectCliente }) {
             <div key={client.id} className="card"
               style={{ padding: 20, cursor: 'pointer', transition: 'all .15s' }}
               onClick={() => onSelectCliente(client)}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = client.color || '#E8313A'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = client.color || '#C4501A'; e.currentTarget.style.transform = 'translateY(-1px)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E5E2'; e.currentTarget.style.transform = 'none' }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -188,7 +188,7 @@ export default function Clientes({ onSelectCliente }) {
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid #F0F0EE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: '#AAA' }}>Ver campañas →</span>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: client.color || '#E8313A' }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: client.color || '#C4501A' }} />
               </div>
             </div>
           ))}
@@ -221,7 +221,7 @@ export default function Clientes({ onSelectCliente }) {
               style={{ width: 36, height: 36, borderRadius: 8, border: '0.5px solid #E5E5E2', cursor: 'pointer', padding: 2 }} />
             <input className="input" value={form.color}
               onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-              placeholder="#E8313A" style={{ fontFamily: 'monospace', maxWidth: 120 }} />
+              placeholder="#C4501A" style={{ fontFamily: 'monospace', maxWidth: 120 }} />
             <div style={{ width: 36, height: 36, borderRadius: 8, background: form.color, border: '0.5px solid #E5E5E2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
               {form.nombre?.slice(0, 2).toUpperCase() || 'AB'}
             </div>

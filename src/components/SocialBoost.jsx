@@ -270,13 +270,13 @@ export default function SocialBoost() {
               const sinVideos = s.vids_sem === 0
               return (
                 <div key={n} className="card" onClick={() => { setCancionSel(n); setVista('cancion') }}
-                  style={{ borderTop: '3px solid #E8313A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 300, transition: 'box-shadow .12s' }}
+                  style={{ borderTop: '3px solid #C4501A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 300, transition: 'box-shadow .12s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
                   <div style={{ padding: '14px 14px 10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                      {igual ? <span style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {n}</span> : <select value={s.prioridad || ''} onChange={e => cambiarPrioridad(s, e.target.value)}
-                        style={{ fontSize: 11, fontWeight: 600, color: s.prioridad ? '#fff' : '#C0392B', background: s.prioridad ? '#E8313A' : '#FFF', border: s.prioridad ? 'none' : '1px solid #C0392B', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
+                      {igual ? <span style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#C4501A', fontWeight: 600 }}>Slot {n}</span> : <select value={s.prioridad || ''} onChange={e => cambiarPrioridad(s, e.target.value)}
+                        style={{ fontSize: 11, fontWeight: 600, color: s.prioridad ? '#fff' : '#C0392B', background: s.prioridad ? '#C4501A' : '#FFF', border: s.prioridad ? 'none' : '1px solid #C0392B', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
                         <option value="">Sin prioridad</option>
                         {[1, 2, 3, 4, 5].map(p => <option key={p} value={p}>Prioridad {p}</option>)}
                       </select>}
@@ -294,7 +294,7 @@ export default function SocialBoost() {
                     {falta === 0 ? 'Meta cumplida ✓' : `Faltan ${falta}`}{s.vids_sem > m && m > 0 ? ` · +${s.vids_sem - m} extra` : ''} · {s.vids_mes} en el mes
                   </div>
                   <div style={{ margin: '0 14px 12px', height: 5, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: pct + '%', height: '100%', background: falta === 0 ? '#2E7D32' : '#E8313A' }} />
+                    <div style={{ width: pct + '%', height: '100%', background: falta === 0 ? '#2E7D32' : '#C4501A' }} />
                   </div>
                   <div style={{ flex: 1 }} />
                   <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
@@ -492,10 +492,10 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
     <div style={{ padding: '28px 28px', maxWidth: 1000, margin: '0 auto' }}>
       <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={onBack}>← {tituloSemana(inicio)}</button>
 
-      <div className="card" style={{ padding: 18, marginBottom: 14, borderTop: '3px solid #E8313A' }}>
+      <div className="card" style={{ padding: 18, marginBottom: 14, borderTop: '3px solid #C4501A' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#E8313A', fontWeight: 600 }}>Slot {info.slot}</div>
+            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#C4501A', fontWeight: 600 }}>Slot {info.slot}</div>
             <div style={{ fontSize: 20, fontWeight: 500, marginTop: 2 }}>{info.cancion}</div>
             <div style={{ fontSize: 12.5, color: '#888' }}>{info.artista || '—'}{info.solicitante ? ` · Solicitada por ${info.solicitante}` : ''}</div>
           </div>
@@ -542,7 +542,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
                     {v.handle ? (
                       <span>@{v.handle}{v.cuenta_nombre && <span style={{ marginLeft: 6, fontSize: 11, background: '#F1EFE8', color: '#5F5E5A', borderRadius: 6, padding: '2px 7px' }}>{v.cuenta_nombre}</span>}</span>
                     ) : (
-                      <select className="input" style={{ fontSize: 12, padding: '4px 6px', width: 150, borderColor: v.cuenta_manual ? undefined : '#E8313A' }}
+                      <select className="input" style={{ fontSize: 12, padding: '4px 6px', width: 150, borderColor: v.cuenta_manual ? undefined : '#C4501A' }}
                         value={v.cuenta_manual || ''} onChange={e => asignarCuenta(v, e.target.value)}>
                         <option value="">¿Qué cuenta?</option>
                         {cuentas.filter(c => c.activa || c.id === v.cuenta_manual).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -603,7 +603,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
 }
 
 // ═════════════════════════ CONFIGURACIÓN (cuentas + gráfico) ═════════════════════════
-const COLORES_CUENTA = ['#E8313A', '#3B5BDB', '#1D9E75', '#BA7517', '#7C3AED', '#0369A1', '#C2185B']
+const COLORES_CUENTA = ['#C4501A', '#3B5BDB', '#1D9E75', '#BA7517', '#7C3AED', '#0369A1', '#C2185B']
 
 function Config({ cuentas, onBack, onChanged }) {
   const [modal, setModal] = useState(null)

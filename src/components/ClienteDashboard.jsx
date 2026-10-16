@@ -122,7 +122,7 @@ export default function ClienteDashboard({ client, onBack, onOpenCampaign }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 12,
-            background: client.color || '#E8313A',
+            background: client.color || '#C4501A',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18, fontWeight: 700, color: '#fff',
           }}>
@@ -170,7 +170,7 @@ export default function ClienteDashboard({ client, onBack, onOpenCampaign }) {
             </button>
             <a href={`${window.location.origin}/?clientDashboard=${clientToken.token}`}
               target="_blank" rel="noopener noreferrer"
-              style={{ marginLeft: 'auto', fontSize: 12, color: client.color || '#E8313A', textDecoration: 'none' }}>
+              style={{ marginLeft: 'auto', fontSize: 12, color: client.color || '#C4501A', textDecoration: 'none' }}>
               Vista previa ↗
             </a>
           </div>

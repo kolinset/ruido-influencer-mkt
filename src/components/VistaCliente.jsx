@@ -28,14 +28,14 @@ function getSize(n) {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 function fmtSeg(n) {
@@ -69,7 +69,7 @@ function ProfileLink({ username, link }) {
   if (!username) return <span style={{ color: '#CCC', fontSize: 13 }}>—</span>
   if (link) return (
     <a href={link} target="_blank" rel="noopener noreferrer"
-      style={{ color: '#E8313A', fontWeight: 500, textDecoration: 'none', fontSize: 13 }}
+      style={{ color: '#C4501A', fontWeight: 500, textDecoration: 'none', fontSize: 13 }}
       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
     >{username} <span style={{ fontSize: 10, opacity: 0.6 }}>↗</span></a>
@@ -284,7 +284,7 @@ export default function VistaCliente({ token }) {
       {/* Header */}
       <div style={{ background: '#111', padding: '28px 40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div style={{ width: 28, height: 28, background: '#E8313A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
+          <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '.05em' }}>KOLINSET — Influencer MKT</span>
         </div>
 

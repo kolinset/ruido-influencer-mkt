@@ -66,14 +66,14 @@ const ESTADO_CAMP_COLORS = {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 const TABS_LISTA = ['Activas', 'Pausadas', 'Cerradas', 'Canceladas', 'Todas']
@@ -204,7 +204,7 @@ function BudgetSummary({ camp, isMobile }) {
   const margenMonto = camp.es_legacy ? null : Math.round((Number(camp.budget_total) || 0) * margenPct / 100)
   const restante = budgetUtilizable - usado
   const usadoPct = budgetUtilizable > 0 ? Math.min(100, Math.round((usado / budgetUtilizable) * 100)) : 0
-  const barColor = usadoPct > 90 ? '#E8313A' : usadoPct > 70 ? '#F0A500' : '#639922'
+  const barColor = usadoPct > 90 ? '#C4501A' : usadoPct > 70 ? '#F0A500' : '#639922'
   const moneda = camp.moneda || 'CLP'
 
   return (
@@ -237,7 +237,7 @@ function BudgetSummary({ camp, isMobile }) {
         </div>
         <div>
           <div style={{ fontSize: 10.5, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Disponible</div>
-          <div style={{ fontSize: 18, fontWeight: 500, color: restante < 0 ? '#E8313A' : '#1A1A1A' }}>{fmtMoney(restante, moneda)}</div>
+          <div style={{ fontSize: 18, fontWeight: 500, color: restante < 0 ? '#C4501A' : '#1A1A1A' }}>{fmtMoney(restante, moneda)}</div>
         </div>
       </div>
       <div style={{ height: 6, background: '#E5E5E2', borderRadius: 3, overflow: 'hidden' }}>
@@ -1234,7 +1234,7 @@ export default function Campanas({ initialCamp = null }) {
   // ─── VISTA DETALLE ───
   if (currentCamp) {
     const ec = ESTADO_CAMP_COLORS[currentCamp.estado] || ESTADO_CAMP_COLORS['Activa']
-    const clientColor = currentCamp.client_color || '#E8313A'
+    const clientColor = currentCamp.client_color || '#C4501A'
     const hasReporteTT = showTT && currentCamp.reporte_url_tt
     const hasReporteIG = showIG && currentCamp.reporte_url_ig
     const isPlaylisting = currentCamp.tipo === 'Playlisting'
@@ -1638,9 +1638,9 @@ export default function Campanas({ initialCamp = null }) {
               const ultimoPrecio = ultimo ? calcCosto(ultimo.costo, ultimo.tipo_facturacion) : null
               return (
                 <div key={inf.id} onClick={() => toggleInfSelection(inf.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderBottom: '0.5px solid #F0F0EE', background: isSelected ? '#FEF9F9' : 'transparent' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderBottom: '0.5px solid #F0F0EE', background: isSelected ? '#FBEFE3' : 'transparent' }}
                 >
-                  <div style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: `1.5px solid ${isSelected ? '#E8313A' : '#D0D0CC'}`, background: isSelected ? '#E8313A' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: `1.5px solid ${isSelected ? '#C4501A' : '#D0D0CC'}`, background: isSelected ? '#C4501A' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {isSelected && <span style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>✓</span>}
                   </div>
                   <Avatar nombre={inf.nombre} index={i} size={28} />
@@ -1842,7 +1842,7 @@ export default function Campanas({ initialCamp = null }) {
               <div key={camp.id} className="card"
                 style={{ padding: 18, cursor: 'pointer', transition: 'border-color .15s', opacity: isInactive ? 0.75 : 1 }}
                 onClick={() => { setCurrentCamp(camp); setCampTab('influencers') }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#E8313A'}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#C4501A'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E5E2'}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>

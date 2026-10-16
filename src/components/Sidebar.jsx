@@ -55,9 +55,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
         {/* Panel deslizable desde abajo */}
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(250, 246, 244, 0.86)', borderRadius: '26px 26px 0 0',
+          background: 'rgba(253, 244, 233, 0.88)', borderRadius: '26px 26px 0 0',
           WebkitBackdropFilter: 'blur(30px) saturate(170%)', backdropFilter: 'blur(30px) saturate(170%)',
-          boxShadow: '0 -8px 30px rgba(73,50,60,0.14)',
+          boxShadow: '0 -8px 30px rgba(58,22,8,0.16)',
           zIndex: 101, padding: '12px 0 32px',
           transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .28s cubic-bezier(.32,.72,0,1)',
@@ -67,7 +67,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
 
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px 14px', borderBottom: '0.5px solid #F0F0EE' }}>
-            <div style={{ width: 28, height: 28, background: '#E8313A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
+            <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>KOLINSET</div>
               <div style={{ fontSize: 11, color: '#AAA' }}>Influencer MKT</div>
@@ -82,8 +82,8 @@ export default function Sidebar({ page, setPage, onLogout }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
-                  background: page === item.id ? '#FCEBEB' : 'transparent',
-                  color: page === item.id ? '#A32D2D' : '#444',
+                  background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
+                  color: page === item.id ? '#8A2E0C' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -99,8 +99,8 @@ export default function Sidebar({ page, setPage, onLogout }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
-                  background: page === item.id ? '#FCEBEB' : 'transparent',
-                  color: page === item.id ? '#A32D2D' : '#444',
+                  background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
+                  color: page === item.id ? '#8A2E0C' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -135,7 +135,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
                   flex: 1, display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
                   gap: 2, padding: '6px 0', cursor: 'pointer',
-                  color: isActive ? '#E8313A' : '#AAA',
+                  color: isActive ? '#C4501A' : '#AAA',
                 }}
               >
                 <span style={{ fontSize: 17 }}>{item.icon}</span>
@@ -150,7 +150,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
               flex: 1, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: 2, padding: '6px 0', cursor: 'pointer',
-              color: menuOpen ? '#E8313A' : '#AAA',
+              color: menuOpen ? '#C4501A' : '#AAA',
             }}
           >
             <span style={{ fontSize: 17 }}>☰</span>

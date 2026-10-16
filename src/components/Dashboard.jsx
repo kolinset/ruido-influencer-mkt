@@ -12,14 +12,14 @@ function calcCosto(base, tipo) {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 function fmtSeg(n) {
@@ -191,7 +191,7 @@ export default function Dashboard({ onNavigate }) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             transition: 'all .15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#E8313A'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#C4501A'; e.currentTarget.style.transform = 'translateY(-1px)' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E5E2'; e.currentTarget.style.transform = 'none' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -216,7 +216,7 @@ export default function Dashboard({ onNavigate }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 13, fontWeight: 500 }}>Top influencers TikTok</h2>
-            <span style={{ fontSize: 12, color: '#E8313A', cursor: 'pointer' }} onClick={() => onNavigate('roster')}>Ver roster →</span>
+            <span style={{ fontSize: 12, color: '#C4501A', cursor: 'pointer' }} onClick={() => onNavigate('roster')}>Ver roster →</span>
           </div>
           <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
             {topInfs.length === 0 ? (
@@ -241,7 +241,7 @@ export default function Dashboard({ onNavigate }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 13, fontWeight: 500 }}>Campañas — {mesNombre}</h2>
-            <span style={{ fontSize: 12, color: '#E8313A', cursor: 'pointer' }} onClick={() => onNavigate('campanas')}>Ver todas →</span>
+            <span style={{ fontSize: 12, color: '#C4501A', cursor: 'pointer' }} onClick={() => onNavigate('campanas')}>Ver todas →</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {campsMes.length === 0 ? (
@@ -251,7 +251,7 @@ export default function Dashboard({ onNavigate }) {
             ) : campsMes.map(camp => (
               <div key={camp.id} className="card" style={{ padding: '14px 16px', cursor: 'pointer', transition: 'border-color .15s' }}
                 onClick={() => onNavigate('campanas')}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#E8313A'}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#C4501A'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E5E2'}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 2 }}>

@@ -3,14 +3,14 @@ import sql from '../lib/db'
 import Modal from './Modal'
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 function fmtNum(n) {
@@ -58,7 +58,7 @@ function MiniBar({ value, max }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ flex: 1, height: 4, background: '#F0F0EE', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: pct + '%', background: '#E8313A', borderRadius: 2 }} />
+        <div style={{ height: '100%', width: pct + '%', background: '#C4501A', borderRadius: 2 }} />
       </div>
       <span style={{ fontSize: 11, color: '#AAA', width: 32, textAlign: 'right' }}>{pct}%</span>
     </div>
@@ -347,7 +347,7 @@ export default function Reportes({ camp, roster }) {
             <a
               href={`${window.location.origin}/?report=${reportToken.token}`}
               target="_blank" rel="noopener noreferrer"
-              style={{ marginLeft: 'auto', fontSize: 12, color: '#E8313A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+              style={{ marginLeft: 'auto', fontSize: 12, color: '#C4501A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
             >
               Vista previa ↗
             </a>
@@ -478,7 +478,7 @@ export default function Reportes({ camp, roster }) {
                               <div style={{ fontSize: 12.5, fontWeight: 500 }}>{p.inf_nombre}</div>
                               {p.url && (
                                 <a href={p.url} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize: 10.5, color: '#E8313A', textDecoration: 'none' }}>
+                                  style={{ fontSize: 10.5, color: '#C4501A', textDecoration: 'none' }}>
                                   Ver post ↗
                                 </a>
                               )}
@@ -633,7 +633,7 @@ export default function Reportes({ camp, roster }) {
             }}>{selectedPost.plataforma}</span>
             {selectedPost.url && (
               <a href={selectedPost.url} target="_blank" rel="noopener noreferrer"
-                style={{ color: '#E8313A', fontSize: 12, textDecoration: 'none' }}>
+                style={{ color: '#C4501A', fontSize: 12, textDecoration: 'none' }}>
                 Ver post ↗
               </a>
             )}

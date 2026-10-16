@@ -76,7 +76,7 @@ export default function SharePanel({ camp, onUpdate }) {
           href={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ marginLeft: 'auto', fontSize: 12, color: '#E8313A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+          style={{ marginLeft: 'auto', fontSize: 12, color: '#C4501A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
         >
           Vista previa ↗
         </a>

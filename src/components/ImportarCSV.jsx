@@ -240,7 +240,7 @@ export default function ImportarCSV({ onDone }) {
             <div
               style={{ border: '1.5px dashed #D0D0CC', borderRadius: 10, padding: '32px 20px', textAlign: 'center', cursor: 'pointer', background: '#FAFAF8', transition: 'all .15s' }}
               onClick={() => fileRef.current?.click()}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#E8313A'; e.currentTarget.style.background = '#FEF9F9' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#C4501A'; e.currentTarget.style.background = '#FBEFE3' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#D0D0CC'; e.currentTarget.style.background = '#FAFAF8' }}
             >
               <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
@@ -349,7 +349,7 @@ export default function ImportarCSV({ onDone }) {
               Importando... {imported + skipped} de {preview.length}
             </div>
             <div style={{ height: 6, background: '#F0F0EE', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-              <div style={{ height: '100%', width: progress + '%', background: '#E8313A', borderRadius: 3, transition: 'width .2s' }} />
+              <div style={{ height: '100%', width: progress + '%', background: '#C4501A', borderRadius: 3, transition: 'width .2s' }} />
             </div>
             <div style={{ fontSize: 12, color: '#AAA' }}>{progress}%</div>
           </div>

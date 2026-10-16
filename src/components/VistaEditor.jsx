@@ -106,7 +106,7 @@ export default function VistaEditor({ token }) {
     <div style={wrap}>
       <div style={{ background: '#111', padding: '22px 18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: '#E8313A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>K</div>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: '#C4501A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>K</div>
           <div>
             <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Social Boost</div>
             <div style={{ fontSize: 18, fontWeight: 500, color: '#fff' }}>Subida de videos</div>
@@ -139,10 +139,10 @@ export default function VistaEditor({ token }) {
                 const vids = data.videos.filter(v => v.cancion_id === s.cancion_id)
                 const open = abierta === s.cancion_id
                 return (
-                  <div key={s.cancion_id} style={{ ...card, borderLeft: '3px solid #E8313A', padding: 16 }}>
+                  <div key={s.cancion_id} style={{ ...card, borderLeft: '3px solid #C4501A', padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <div style={{ minWidth: 0 }}>
-                        {s.prioridad && !data.sin_prioridad && <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 600, color: '#fff', background: '#E8313A', borderRadius: 5, padding: '2px 7px', marginBottom: 5 }}>Prioridad {s.prioridad}</span>}
+                        {s.prioridad && !data.sin_prioridad && <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 600, color: '#fff', background: '#C4501A', borderRadius: 5, padding: '2px 7px', marginBottom: 5 }}>Prioridad {s.prioridad}</span>}
                         <div style={{ fontSize: 15.5, fontWeight: 500 }}>{s.cancion}</div>
                         <div style={{ fontSize: 12.5, color: '#999' }}>{s.artista || '—'} · {s.vids_sem} esta semana · {s.vids_mes} en el mes</div>
                         {meta > 0 && <div style={{ fontSize: 13, marginTop: 3, color: falta === 0 ? '#2E7D32' : '#C0392B', fontWeight: 500 }}>{falta === 0 ? `Meta cumplida (${meta}) ✓` : `Meta de la semana: ${meta} · faltan ${falta}`}</div>}

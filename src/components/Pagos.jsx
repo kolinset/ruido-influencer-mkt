@@ -11,14 +11,14 @@ const ESTADO_PAGO_COLORS = {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 // ─── Constantes centralizadas ───
@@ -204,7 +204,7 @@ export default function Pagos({ camp, onUpdate }) {
                       <td className="td">
                         {inf.link_boleta ? (
                           <a href={inf.link_boleta} target="_blank" rel="noopener noreferrer"
-                            style={{ color: '#E8313A', fontSize: 12.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                            style={{ color: '#C4501A', fontSize: 12.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
                             onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                             onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
                           >Ver boleta ↗</a>

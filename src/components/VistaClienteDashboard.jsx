@@ -56,14 +56,14 @@ function getSize(n) {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 function fmtSeg(n) {
@@ -107,7 +107,7 @@ function ProfileLink({ username, link }) {
   if (!username) return <span style={{ color: '#CCC', fontSize: 13 }}>—</span>
   if (link) return (
     <a href={link} target="_blank" rel="noopener noreferrer"
-      style={{ color: '#E8313A', fontWeight: 500, textDecoration: 'none', fontSize: 13 }}
+      style={{ color: '#C4501A', fontWeight: 500, textDecoration: 'none', fontSize: 13 }}
     >{username} <span style={{ fontSize: 10, opacity: 0.6 }}>↗</span></a>
   )
   return <span style={{ fontSize: 13, color: '#555', fontWeight: 500 }}>{username}</span>
@@ -263,7 +263,7 @@ export default function VistaClienteDashboard({ token }) {
   )
 
   const { client, camps } = data
-  const brandColor = client.color || '#E8313A'
+  const brandColor = client.color || '#C4501A'
   const padX = isMobile ? 16 : 40
 
   // ─── VISTA CAMPAÑA INDIVIDUAL ───
@@ -654,7 +654,7 @@ export default function VistaClienteDashboard({ token }) {
                 style={{ minHeight: 42, minWidth: 42, borderRadius: 8, border: '0.5px solid #E5E5E2', background: activeFiltersCount > 0 ? '#FCEBEB' : '#fff', color: activeFiltersCount > 0 ? '#A32D2D' : '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, position: 'relative', flexShrink: 0 }}>
                 ⚙
                 {activeFiltersCount > 0 && (
-                  <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#E8313A', color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeFiltersCount}</span>
+                  <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#C4501A', color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeFiltersCount}</span>
                 )}
               </button>
             </div>

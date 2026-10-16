@@ -47,14 +47,14 @@ function getSize(n) {
 }
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 function fmtSeg(n) {
@@ -104,7 +104,7 @@ function UserLink({ username, link }) {
   if (!username) return <span style={{ color: '#CCC' }}>—</span>
   if (link) return (
     <a href={link} target="_blank" rel="noopener noreferrer"
-      style={{ color: '#E8313A', textDecoration: 'none', fontSize: 12.5 }}
+      style={{ color: '#C4501A', textDecoration: 'none', fontSize: 12.5 }}
       onMouseEnter={e => e.target.style.textDecoration = 'underline'}
       onMouseLeave={e => e.target.style.textDecoration = 'none'}
     >{username} ↗</a>
@@ -558,7 +558,7 @@ export default function Roster() {
               {activeFiltersCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -4, right: -4, width: 16, height: 16,
-                  borderRadius: '50%', background: '#E8313A', color: '#fff',
+                  borderRadius: '50%', background: '#C4501A', color: '#fff',
                   fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>{activeFiltersCount}</span>
               )}
@@ -630,7 +630,7 @@ export default function Roster() {
               <div key={inf.id}
                 onClick={() => openPanel(inf, i)}
                 style={{
-                  background: '#fff', border: `0.5px solid ${isSelected ? '#E8313A' : '#E5E5E2'}`,
+                  background: '#fff', border: `0.5px solid ${isSelected ? '#C4501A' : '#E5E5E2'}`,
                   borderRadius: 12, padding: '14px', opacity: isActivo ? 1 : 0.65,
                   cursor: 'pointer', transition: 'border-color .15s',
                 }}>
@@ -649,7 +649,7 @@ export default function Roster() {
                     <button onClick={() => openEdit(inf)}
                       style={{ width: 36, height: 36, borderRadius: 8, border: '0.5px solid #E5E5E2', background: '#F7F7F5', color: '#555', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✎</button>
                     <button onClick={() => setDeleteId(inf.id)}
-                      style={{ width: 36, height: 36, borderRadius: 8, border: '0.5px solid #FDDADA', background: '#FEF9F9', color: '#C0392B', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                      style={{ width: 36, height: 36, borderRadius: 8, border: '0.5px solid #FDDADA', background: '#FBEFE3', color: '#C0392B', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
@@ -707,7 +707,7 @@ export default function Roster() {
                       onClick={() => openPanel(inf, i)}
                       style={{
                         borderBottom: '0.5px solid #F0F0EE', cursor: 'pointer',
-                        background: isSelected ? '#FEF9F9' : 'transparent',
+                        background: isSelected ? '#FBEFE3' : 'transparent',
                         transition: 'background .1s',
                       }}
                       onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F7F7F5' }}

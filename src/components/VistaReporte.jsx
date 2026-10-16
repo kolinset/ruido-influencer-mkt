@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
 
 const AV_COLORS = [
-  { bg: '#FDDADA', color: '#C0392B' },
-  { bg: '#E6EEFF', color: '#3B5BDB' },
-  { bg: '#E1F5EE', color: '#1D9E75' },
-  { bg: '#F3E8FF', color: '#7C3AED' },
-  { bg: '#FFF3CD', color: '#BA7517' },
-  { bg: '#FDE8F0', color: '#C2185B' },
-  { bg: '#D4F4FF', color: '#0369A1' },
-  { bg: '#E8F5E9', color: '#2E7D32' },
+  { bg: '#F4D3AE', color: '#8A2E0C' },
+  { bg: '#F6DCC4', color: '#3A1608' },
+  { bg: '#F9C99A', color: '#8A2E0C' },
+  { bg: '#EFD9C8', color: '#C4501A' },
+  { bg: '#F2C3A0', color: '#3A1608' },
+  { bg: '#FBE6CF', color: '#C4501A' },
+  { bg: '#E9C6A8', color: '#3A1608' },
+  { bg: '#F7D9B8', color: '#8A2E0C' },
 ]
 
 const TIPO_COLORS = {
@@ -222,7 +222,7 @@ export default function VistaReporte({ token }) {
       {/* Header */}
       <div style={{ background: '#111', padding: '28px 40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div style={{ width: 28, height: 28, background: '#E8313A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
+          <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', letterSpacing: '.05em' }}>KOLINSET — Reporte de campaña</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
@@ -245,7 +245,7 @@ export default function VistaReporte({ token }) {
                       padding: '6px 14px', borderRadius: 20, fontSize: 12.5, cursor: 'pointer',
                       border: isActive ? 'none' : '0.5px solid rgba(255,255,255,0.2)',
                       background: isActive
-                        ? isTT ? '#F0F0EE' : isIG ? '#FEF0FB' : '#E8313A'
+                        ? isTT ? '#F0F0EE' : isIG ? '#FEF0FB' : '#C4501A'
                         : 'transparent',
                       color: isActive
                         ? isTT ? '#555' : isIG ? '#6B1560' : '#fff'
@@ -337,12 +337,12 @@ export default function VistaReporte({ token }) {
                               </div>
                             </div>
                             <div style={{ height: 4, background: '#F0F0EE', borderRadius: 2, overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: pct + '%', background: '#E8313A', borderRadius: 2 }} />
+                              <div style={{ height: '100%', width: pct + '%', background: '#C4501A', borderRadius: 2 }} />
                             </div>
                           </div>
                           {p.url && (
                             <a href={p.url} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize: 12, color: '#E8313A', textDecoration: 'none', flexShrink: 0 }}>
+                              style={{ fontSize: 12, color: '#C4501A', textDecoration: 'none', flexShrink: 0 }}>
                               Ver ↗
                             </a>
                           )}
@@ -452,7 +452,7 @@ export default function VistaReporte({ token }) {
                       <td style={tdStyle}>
                         {p.url ? (
                           <a href={p.url} target="_blank" rel="noopener noreferrer"
-                            style={{ color: '#E8313A', fontSize: 13, textDecoration: 'none', fontWeight: 500 }}
+                            style={{ color: '#C4501A', fontSize: 13, textDecoration: 'none', fontWeight: 500 }}
                             onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                             onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
                           >Ver ↗</a>

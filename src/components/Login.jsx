@@ -35,9 +35,9 @@ export default function Login({ onLogin }) {
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div style={{
-            width: 36, height: 36, background: 'linear-gradient(145deg, #FF6A5C, #E8313A 60%, #B81D2A)', borderRadius: 11,
+            width: 36, height: 36, background: 'linear-gradient(145deg, #E58A3E, #C4501A 55%, #8A2E0C)', borderRadius: 11,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 700, color: '#fff', boxShadow: '0 6px 16px rgba(232,49,58,0.35)',
+            fontSize: 15, fontWeight: 700, color: '#fff', boxShadow: '0 6px 16px rgba(196,80,26,0.35)',
           }}>K</div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 500 }}>KOLINSET</div>
@@ -70,7 +70,7 @@ export default function Login({ onLogin }) {
               onChange={e => { setPassword(e.target.value); setError('') }}
               placeholder="••••••••"
               style={{
-                borderColor: error ? '#E8313A' : undefined,
+                borderColor: error ? '#C4501A' : undefined,
                 background: error ? '#FCEBEB' : undefined,
               }}
             />
