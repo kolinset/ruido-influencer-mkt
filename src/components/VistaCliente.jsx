@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
+import Logo from './Logo'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -234,13 +235,13 @@ export default function VistaCliente({ token }) {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F7F5' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ fontSize: 13, color: '#AAA' }}>Cargando propuesta...</div>
     </div>
   )
 
   if (error) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F7F5' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', color: '#AAA' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>◈</div>
         <div style={{ fontSize: 15, fontWeight: 500, color: '#555', marginBottom: 6 }}>
@@ -279,13 +280,13 @@ export default function VistaCliente({ token }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
 
       {/* Header */}
-      <div style={{ background: '#111', padding: '28px 40px' }}>
+      <div className="portal-hero" style={{ margin: '16px 24px 0', padding: '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '.05em' }}>KOLINSET — Influencer MKT</span>
+          <Logo height={18} />
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '.05em' }}>— Influencer MKT</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
@@ -551,8 +552,8 @@ export default function VistaCliente({ token }) {
           </div>
         )}
 
-        <div style={{ marginTop: 20, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
-          Propuesta generada por KOLINSET — Influencer MKT
+        <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
+          Propuesta generada por <Logo height={10} style={{ opacity: 0.45 }} />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
+import Logo from './Logo'
 
 const AV_COLORS = [
   { bg: '#F4D3AE', color: '#8A2E0C' },
@@ -144,13 +145,13 @@ export default function VistaReporte({ token }) {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ fontSize: 13, color: '#AAA' }}>Cargando reporte...</div>
     </div>
   )
 
   if (error) return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', color: '#AAA' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>◈</div>
         <div style={{ fontSize: 15, fontWeight: 500, color: '#555', marginBottom: 6 }}>
@@ -217,13 +218,13 @@ export default function VistaReporte({ token }) {
   const platTabs = ['Todas', ...plataformas]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
 
       {/* Header */}
-      <div style={{ background: '#111', padding: '28px 40px' }}>
+      <div className="portal-hero" style={{ margin: '16px 24px 0', padding: '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', letterSpacing: '.05em' }}>KOLINSET — Reporte de campaña</span>
+          <Logo height={18} />
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', letterSpacing: '.05em' }}>— Reporte de campaña</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
@@ -466,8 +467,8 @@ export default function VistaReporte({ token }) {
           </div>
         )}
 
-        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
-          Reporte generado por KOLINSET — Influencer MKT
+        <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
+          Reporte generado por <Logo height={10} style={{ opacity: 0.45 }} />
         </div>
       </div>
     </div>

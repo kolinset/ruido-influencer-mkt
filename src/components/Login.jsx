@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import supabase from '../lib/supabaseClient'
+import Logo from './Logo'
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -33,16 +34,9 @@ export default function Login({ onLogin }) {
         borderRadius: 28, padding: '40px 34px', width: '100%', maxWidth: 380,
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <div style={{
-            width: 36, height: 36, background: 'linear-gradient(145deg, #E58A3E, #C4501A 55%, #8A2E0C)', borderRadius: 11,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 700, color: '#fff', boxShadow: '0 6px 16px rgba(196,80,26,0.35)',
-          }}>K</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>KOLINSET</div>
-            <div style={{ fontSize: 11, color: '#AAA' }}>Influencer MKT</div>
-          </div>
+        <div style={{ marginBottom: 30 }}>
+          <Logo height={24} />
+          <div style={{ fontSize: 11, color: '#AAA', marginTop: 8, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
         </div>
 
         <h1 style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Bienvenido</h1>

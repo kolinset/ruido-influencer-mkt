@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Logo from './Logo'
 
 const ALL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '◈' },
@@ -55,9 +56,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
         {/* Panel deslizable desde abajo */}
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(253, 244, 233, 0.88)', borderRadius: '26px 26px 0 0',
+          background: 'rgba(22, 17, 16, 0.92)', borderRadius: '26px 26px 0 0',
           WebkitBackdropFilter: 'blur(30px) saturate(170%)', backdropFilter: 'blur(30px) saturate(170%)',
-          boxShadow: '0 -8px 30px rgba(58,22,8,0.16)',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.5)',
           zIndex: 101, padding: '12px 0 32px',
           transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .28s cubic-bezier(.32,.72,0,1)',
@@ -66,12 +67,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
           <div style={{ width: 36, height: 4, background: '#E5E5E2', borderRadius: 2, margin: '0 auto 16px' }} />
 
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px 14px', borderBottom: '0.5px solid #F0F0EE' }}>
-            <div style={{ width: 28, height: 28, background: '#C4501A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>K</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>KOLINSET</div>
-              <div style={{ fontSize: 11, color: '#AAA' }}>Influencer MKT</div>
-            </div>
+          <div style={{ padding: '0 20px 14px', borderBottom: '0.5px solid #F0F0EE' }}>
+            <Logo height={18} />
+            <div style={{ fontSize: 10.5, color: '#AAA', marginTop: 6, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
           </div>
 
           <div style={{ padding: '8px 12px' }}>
@@ -83,7 +81,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
                   background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
-                  color: page === item.id ? '#8A2E0C' : '#444',
+                  color: page === item.id ? '#F0B37A' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -100,7 +98,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
                   background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
-                  color: page === item.id ? '#8A2E0C' : '#444',
+                  color: page === item.id ? '#F0B37A' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -181,12 +179,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
       display: 'flex', flexDirection: 'column', flexShrink: 0,
       position: 'sticky', top: 14, height: 'calc(100vh - 28px)',
     }}>
-      <div style={{ padding: '22px 18px 18px', display: 'flex', alignItems: 'center', gap: 11 }}>
-        <div className="brand-mark">K</div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '.02em' }}>KOLINSET</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>Influencer MKT</div>
-        </div>
+      <div style={{ padding: '24px 20px 18px' }}>
+        <Logo height={20} />
+        <div style={{ fontSize: 10.5, color: 'var(--ink-faint)', marginTop: 7, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
       </div>
 
       <nav style={{ padding: '4px 10px', flex: 1, overflowY: 'auto' }}>

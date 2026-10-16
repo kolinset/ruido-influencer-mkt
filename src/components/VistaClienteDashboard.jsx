@@ -21,6 +21,7 @@ function normalizeSolicitante(raw) {
 }
 import { publicSql } from '../lib/db'
 import VistaSocialBoost from './VistaSocialBoost'
+import Logo from './Logo'
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
@@ -560,8 +561,8 @@ export default function VistaClienteDashboard({ token }) {
             </div>
           )}
 
-          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
-            Portal generado por KOLINSET — Influencer MKT
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
+            Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
           </div>
         </div>
       </div>
@@ -638,8 +639,8 @@ export default function VistaClienteDashboard({ token }) {
       {tab === 'socialboost' && client.social_boost_activo ? (
         <div style={{ padding: isMobile ? '18px 16px' : '28px 40px' }}>
           <VistaSocialBoost isMobile={isMobile} />
-          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
-            Portal generado por KOLINSET — Influencer MKT
+          <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
+            Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
           </div>
         </div>
       ) : (
@@ -855,8 +856,8 @@ export default function VistaClienteDashboard({ token }) {
           </div>
         )}
 
-        <div style={{ marginTop: 28, textAlign: 'center', fontSize: 11, color: '#CCC' }}>
-          Portal generado por KOLINSET — Influencer MKT
+        <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
+          Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
         </div>
       </div>
       )}

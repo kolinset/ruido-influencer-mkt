@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { calcMetas, totalRestante } from '../lib/sbMetas'
+import Logo from './Logo'
 
 // Página privada de la editora: ve las canciones activas de la semana y agrega links.
 // No usa login: se entra con el link secreto (?editor=...). No toca nada más de ROSTER.
@@ -87,13 +88,13 @@ export default function VistaEditor({ token }) {
   }
 
   const esActual = inicio === mondayOf(ymd(new Date()))
-  const wrap = { minHeight: '100vh', background: '#F7F7F5', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1A1A1A' }
+  const wrap = { minHeight: '100vh' }
   const card = { background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 14 }
   const ghost = { background: '#fff', border: '0.5px solid #D0D0CC', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#555', cursor: 'pointer', fontFamily: 'inherit' }
   const avisoColor = { ok: ['#EAF3DE', '#27500A'], warn: ['#FAEEDA', '#633806'], error: ['#FCEBEB', '#A32D2D'] }
 
   if (error === 'invalido') return (
-    <div style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="glass-app" style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ textAlign: 'center', color: '#AAA' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>◈</div>
         <div style={{ fontSize: 15, fontWeight: 500, color: '#555', marginBottom: 6 }}>Este link no es válido</div>
@@ -103,11 +104,11 @@ export default function VistaEditor({ token }) {
   )
 
   return (
-    <div style={wrap}>
-      <div style={{ background: '#111', padding: '22px 18px' }}>
+    <div className="glass-app" style={wrap}>
+      <div className="portal-hero" style={{ margin: 10, padding: '20px 18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: '#C4501A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>K</div>
-          <div>
+          <Logo height={20} />
+          <div style={{ marginLeft: 6, paddingLeft: 14, borderLeft: '0.5px solid rgba(255,255,255,0.18)' }}>
             <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Social Boost</div>
             <div style={{ fontSize: 18, fontWeight: 500, color: '#fff' }}>Subida de videos</div>
           </div>
