@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import sql from '../lib/db'
+import { publicSql } from '../lib/db'
 import { calcMetas, totalRestante } from '../lib/sbMetas'
 
 // Vista de solo lectura de Social Boost para el portal del cliente.
@@ -36,23 +36,15 @@ export default function VistaSocialBoost({ isMobile }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const sem = (await sql`SELECT id, sin_prioridad FROM sb_semanas WHERE inicio = ${inicio}`)[0]
+      const sem = (await publicSql('sbSemana', inicio))[0]
       setIgual(!!sem?.sin_prioridad)
       if (sem) {
-        setSlots(await sql`
-          SELECT ss.slot, ss.prioridad, ss.objetivo, c.id AS cancion_id, c.cancion, c.artista, c.tokchart_url, c.solicitante,
-            (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id AND v.semana_id = ss.semana_id)::int AS vids_sem,
-            (SELECT count(*) FROM sb_videos v WHERE v.cancion_id = c.id)::int AS vids_mes
-          FROM sb_semana_slots ss JOIN sb_canciones c ON c.id = ss.cancion_id
-          WHERE ss.semana_id = ${sem.id} ORDER BY ss.slot`)
+        setSlots(await publicSql('sbSlotsDeSemana', sem.id))
       } else setSlots([])
-      const kMes = await sql`SELECT count(*)::int AS n FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id WHERE c.mes = ${mes}`
-      const kSem = sem ? await sql`SELECT count(*)::int AS n FROM sb_videos WHERE semana_id = ${sem.id}` : [{ n: 0 }]
+      const kMes = await publicSql('sbVideosDelMes', mes)
+      const kSem = sem ? await publicSql('sbVideosDeSemana', sem.id) : [{ n: 0 }]
       setKpi({ mes: kMes[0].n, semana: kSem[0].n })
-      setReparto(await sql`SELECT cu.id, cu.nombre, count(*)::int AS n
-        FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id
-        LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
-        WHERE c.mes = ${mes} GROUP BY cu.id, cu.nombre ORDER BY n DESC`)
+      setReparto(await publicSql('sbRepartoDelMes', mes))
     } catch (e) { console.error(e) }
     setLoading(false)
   }, [inicio])
@@ -61,10 +53,7 @@ export default function VistaSocialBoost({ isMobile }) {
   async function abrir(s) {
     setAbierta(s); setVideos([])
     try {
-      setVideos(await sql`SELECT v.id, v.link_web, v.link_original, v.handle, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
-        FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id
-        LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
-        WHERE v.cancion_id = ${s.cancion_id} ORDER BY v.created_at DESC, v.id`)
+      setVideos(await publicSql('sbVideosDeCancion', s.cancion_id))
     } catch (e) { console.error(e) }
   }
 

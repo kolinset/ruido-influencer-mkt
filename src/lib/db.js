@@ -13,17 +13,27 @@ async function sql(strings, ...values) {
     text += `$${i + 1}` + strings[i + 1]
   })
 
-  // Si hay sesión iniciada (Lucas/Nico logueados), mandamos su token para
-  // que el backend permita también escrituras/borrados, no solo lecturas.
+  // Las consultas escritas a mano solo funcionan con sesión iniciada (Lucas/Nico
+  // logueados): mandamos su token para que el backend las permita.
   const { data: { session } } = await supabase.auth.getSession()
+  return runQuery({ text, params }, session)
+}
 
+// Para las páginas públicas (sin login): pide una consulta aprobada por su nombre.
+// La lista de consultas permitidas está en api/_publicQueries.js.
+// Uso: `await publicSql('campanaPorShareToken', token)`
+export async function publicSql(name, ...params) {
+  return runQuery({ name, params })
+}
+
+async function runQuery(body, session) {
   const res = await fetch('/api/query', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
     },
-    body: JSON.stringify({ text, params }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {

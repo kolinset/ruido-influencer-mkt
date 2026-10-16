@@ -1092,47 +1092,48 @@ export default function Campanas({ initialCamp = null }) {
     try {
       const ttAnterior = editCI.video_link_tt
       const igAnterior = editCI.video_link_ig
+      const form = { ...editCIForm }
       // Antes de guardar: TikTok móvil -> escritorio, Instagram sin parámetros de seguimiento
-      if (isMobileTikTok(editCIForm.video_link_tt)) {
-        const r = await convertTikTok(editCIForm.video_link_tt)
+      if (isMobileTikTok(form.video_link_tt)) {
+        const r = await convertTikTok(form.video_link_tt)
         if (r.error) alert('No se pudo convertir el link de TikTok (se guarda tal cual): ' + r.error)
-        editCIForm.video_link_tt = r.url
+        form.video_link_tt = r.url
       }
-      editCIForm.video_link_tt = (editCIForm.video_link_tt || '').trim()
-      editCIForm.video_link_ig = cleanInstagram(editCIForm.video_link_ig)
+      form.video_link_tt = (form.video_link_tt || '').trim()
+      form.video_link_ig = cleanInstagram(form.video_link_ig)
       await sql`
         UPDATE campaign_influencers SET
-          costo = ${parseInt(editCIForm.costo) || 0},
-          piezas = ${parseInt(editCIForm.piezas) || 1},
-          estado = ${editCIForm.estado},
-          notas = ${editCIForm.notas},
-          video_link_tt = ${editCIForm.video_link_tt},
-          video_link_ig = ${editCIForm.video_link_ig},
-          boostcode = ${editCIForm.boostcode},
-          tipo_facturacion = ${editCIForm.tipo_facturacion || 'sin_recargo'}
+          costo = ${parseInt(form.costo) || 0},
+          piezas = ${parseInt(form.piezas) || 1},
+          estado = ${form.estado},
+          notas = ${form.notas},
+          video_link_tt = ${form.video_link_tt},
+          video_link_ig = ${form.video_link_ig},
+          boostcode = ${form.boostcode},
+          tipo_facturacion = ${form.tipo_facturacion || 'sin_recargo'}
         WHERE id = ${editCI.ci_id}
       `
-      if (editCIForm.video_link_tt && editCIForm.video_link_tt !== ttAnterior) {
+      if (form.video_link_tt && form.video_link_tt !== ttAnterior) {
         const existing = await sql`SELECT id FROM posts WHERE campaign_id = ${currentCamp.id} AND influencer_id = ${editCI.influencer_id} AND plataforma = 'TikTok' LIMIT 1`
         if (existing.length === 0) {
-          await sql`INSERT INTO posts (campaign_id, influencer_id, plataforma, url) VALUES (${currentCamp.id}, ${editCI.influencer_id}, 'TikTok', ${editCIForm.video_link_tt})`
+          await sql`INSERT INTO posts (campaign_id, influencer_id, plataforma, url) VALUES (${currentCamp.id}, ${editCI.influencer_id}, 'TikTok', ${form.video_link_tt})`
         } else {
-          await sql`UPDATE posts SET url = ${editCIForm.video_link_tt} WHERE id = ${existing[0].id}`
+          await sql`UPDATE posts SET url = ${form.video_link_tt} WHERE id = ${existing[0].id}`
         }
       }
-      if (editCIForm.video_link_ig && editCIForm.video_link_ig !== igAnterior) {
+      if (form.video_link_ig && form.video_link_ig !== igAnterior) {
         const existing = await sql`SELECT id FROM posts WHERE campaign_id = ${currentCamp.id} AND influencer_id = ${editCI.influencer_id} AND plataforma = 'Instagram' LIMIT 1`
         if (existing.length === 0) {
-          await sql`INSERT INTO posts (campaign_id, influencer_id, plataforma, url) VALUES (${currentCamp.id}, ${editCI.influencer_id}, 'Instagram', ${editCIForm.video_link_ig})`
+          await sql`INSERT INTO posts (campaign_id, influencer_id, plataforma, url) VALUES (${currentCamp.id}, ${editCI.influencer_id}, 'Instagram', ${form.video_link_ig})`
         } else {
-          await sql`UPDATE posts SET url = ${editCIForm.video_link_ig} WHERE id = ${existing[0].id}`
+          await sql`UPDATE posts SET url = ${form.video_link_ig} WHERE id = ${existing[0].id}`
         }
       }
       setEditCIModal(false)
       await fetchCamps()
       // Si la campaña ya tiene reporte en Tokchart, los links nuevos se envían solos
-      if (editCIForm.video_link_tt && editCIForm.video_link_tt !== ttAnterior && currentCamp?.tokchart_tt_uuid) await tokchartSync('tiktok', true)
-      if (editCIForm.video_link_ig && editCIForm.video_link_ig !== igAnterior && currentCamp?.tokchart_ig_uuid) await tokchartSync('instagram', true)
+      if (form.video_link_tt && form.video_link_tt !== ttAnterior && currentCamp?.tokchart_tt_uuid) await tokchartSync('tiktok', true)
+      if (form.video_link_ig && form.video_link_ig !== igAnterior && currentCamp?.tokchart_ig_uuid) await tokchartSync('instagram', true)
     } catch (e) { console.error(e) }
   }
 
@@ -1175,7 +1176,9 @@ export default function Campanas({ initialCamp = null }) {
   const showTT = plat === 'Ambas' || plat === 'TikTok'
   const isEspecial = currentCamp && (currentCamp.tipo === 'Nano Blast' || currentCamp.tipo === 'Clipping' || currentCamp.tipo === 'Playlisting')
 
-  function VideoLinkFields({ form, setForm }) {
+  // Se llama como función (no como <Componente />): al estar definida dentro de Campanas,
+  // React la recrearía en cada tecla y el campo perdería el foco al escribir.
+  function renderVideoLinkFields({ form, setForm }) {
     return (
       <>
         {showTT && (
@@ -1731,7 +1734,7 @@ export default function Campanas({ initialCamp = null }) {
               {ESTADOS_INF.map(e => <option key={e}>{e}</option>)}
             </select>
           </div>
-          <VideoLinkFields form={editCIForm} setForm={setEditCIForm} />
+          {renderVideoLinkFields({ form: editCIForm, setForm: setEditCIForm })}
           <div className="fg">
             <label className="label">Boostcode</label>
             <input className="input" value={editCIForm.boostcode}

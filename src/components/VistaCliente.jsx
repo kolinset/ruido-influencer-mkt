@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import sql from '../lib/db'
+import { publicSql } from '../lib/db'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -146,19 +146,9 @@ export default function VistaCliente({ token }) {
   async function fetchPublicCamp(t) {
     setLoading(true)
     try {
-      const campData = await sql`
-        SELECT
-          id, nombre AS camp_nombre, cliente, plataforma,
-          reporte_url_tt, reporte_url_ig,
-          tipo, contenidos_count, views_logradas, views_min, views_max,
-          artista, cancion, budget_total, utilizable_pct,
-          solicitado_por, es_legacy, moneda
-        FROM campaigns
-        WHERE share_token = ${t} AND share_active = true
-        LIMIT 1
-      `
+      const campData = await publicSql('campanaPorShareToken', t)
       if (campData.length === 0) {
-        const check = await sql`SELECT id FROM campaigns WHERE share_token = ${t}`
+        const check = await publicSql('campanaShareTokenExiste', t)
         setError(check.length === 0 ? 'not_found' : 'inactive')
         setLoading(false)
         return
@@ -169,11 +159,7 @@ export default function VistaCliente({ token }) {
       const isPlaylisting = campInfo.tipo === 'Playlisting'
 
       if (isPlaylisting) {
-        const playlists = await sql`
-          SELECT nombre, link FROM campaign_playlists
-          WHERE campaign_id = ${campInfo.id}
-          ORDER BY created_at ASC
-        `
+        const playlists = await publicSql('playlistsDeCampana', campInfo.id)
         setCamp({
           nombre: campInfo.camp_nombre,
           cliente: campInfo.cliente,
@@ -218,41 +204,26 @@ export default function VistaCliente({ token }) {
       }
 
       // Estándar — cargar influencers
-      const rows = await sql`
-        SELECT
-          c.nombre AS camp_nombre, c.cliente, c.plataforma,
-          c.reporte_url_tt, c.reporte_url_ig,
-          c.tipo, c.contenidos_count, c.views_logradas,
-          c.artista, c.cancion,
-          c.budget_total, c.es_legacy, c.solicitado_por, c.moneda,
-          i.nombre,
-          i.ig_usuario, i.ig_seguidores, i.ig_link,
-          i.tt_usuario, i.tt_seguidores, i.tt_link,
-          i.tipos_contenido,
-          ci.video_link_tt, ci.video_link_ig,
-          ci.boostcode
-        FROM campaigns c
-        JOIN campaign_influencers ci ON ci.campaign_id = c.id
-        JOIN influencers i ON i.id = ci.influencer_id
-        WHERE c.share_token = ${t} AND c.share_active = true
-      `
+      const rows = await publicSql('influencersPorShareToken', t)
+      // Si la campaña todavía no tiene influencers, los datos generales salen de campInfo
+      const info = rows[0] || campInfo
       setCamp({
-        nombre: rows[0].camp_nombre,
-        cliente: rows[0].cliente,
-        plataforma: rows[0].plataforma || 'Ambas',
-        reporte_url_tt: rows[0].reporte_url_tt || '',
-        reporte_url_ig: rows[0].reporte_url_ig || '',
-        tipo: rows[0].tipo || 'Influencer MKT',
-        contenidos_count: rows[0].contenidos_count || 0,
-        views_logradas: rows[0].views_logradas || 0,
-        artista: rows[0].artista || '',
-        cancion: rows[0].cancion || '',
-        solicitado_por: rows[0].solicitado_por || '',
-        budget_total: rows[0].budget_total || 0,
-        es_legacy: rows[0].es_legacy || false,
-        moneda: rows[0].moneda || 'CLP',
+        nombre: info.camp_nombre,
+        cliente: info.cliente,
+        plataforma: info.plataforma || 'Ambas',
+        reporte_url_tt: info.reporte_url_tt || '',
+        reporte_url_ig: info.reporte_url_ig || '',
+        tipo: info.tipo || 'Influencer MKT',
+        contenidos_count: info.contenidos_count || 0,
+        views_logradas: info.views_logradas || 0,
+        artista: info.artista || '',
+        cancion: info.cancion || '',
+        solicitado_por: info.solicitado_por || '',
+        budget_total: info.budget_total || 0,
+        es_legacy: info.es_legacy || false,
+        moneda: info.moneda || 'CLP',
         influencers: rows.sort((a, b) => {
-          if (rows[0]?.plataforma === 'Instagram') {
+          if (info.plataforma === 'Instagram') {
             return Number(b.ig_seguidores) - Number(a.ig_seguidores)
           }
           return Number(b.tt_seguidores) - Number(a.tt_seguidores)

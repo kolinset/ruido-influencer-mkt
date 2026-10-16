@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import sql from '../lib/db'
+import { publicSql } from '../lib/db'
 
 const AV_COLORS = [
   { bg: '#FDDADA', color: '#C0392B' },
@@ -93,15 +93,9 @@ export default function VistaReporte({ token }) {
   async function fetchReport(t) {
     setLoading(true)
     try {
-      const tokenData = await sql`
-        SELECT rt.*, c.nombre AS camp_nombre, c.cliente, c.plataforma
-        FROM report_tokens rt
-        JOIN campaigns c ON c.id = rt.campaign_id
-        WHERE rt.token = ${t} AND rt.activo = true
-        LIMIT 1
-      `
+      const tokenData = await publicSql('reportePorToken', t)
       if (tokenData.length === 0) {
-        const check = await sql`SELECT id FROM report_tokens WHERE token = ${t}`
+        const check = await publicSql('reporteTokenExiste', t)
         setError(check.length === 0 ? 'not_found' : 'inactive')
         setLoading(false)
         return
@@ -109,23 +103,7 @@ export default function VistaReporte({ token }) {
 
       const campInfo = tokenData[0]
 
-      const postsData = await sql`
-        SELECT
-          p.*,
-          i.nombre AS inf_nombre,
-          i.ig_usuario, i.tt_usuario,
-          i.ig_seguidores, i.tt_seguidores,
-          i.tipos_contenido,
-          pm.id AS pm_id,
-          pm.views, pm.likes, pm.comentarios,
-          pm.shares, pm.saves, pm.engagement_rate,
-          pm.fecha_registro, pm.fuente
-        FROM posts p
-        JOIN influencers i ON i.id = p.influencer_id
-        LEFT JOIN post_metrics pm ON pm.post_id = p.id
-        WHERE p.campaign_id = ${campInfo.campaign_id}
-        ORDER BY p.fecha_publicacion DESC NULLS LAST
-      `
+      const postsData = await publicSql('postsDeReporte', campInfo.campaign_id)
 
       const grouped = {}
       postsData.forEach(row => {

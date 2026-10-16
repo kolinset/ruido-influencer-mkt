@@ -19,7 +19,7 @@ function normalizeSolicitante(raw) {
   const found = SOLICITANTES_ALIAS.find(p => p.aliases.some(a => stripAccents(a) === clean))
   return found ? found.canonical : raw.trim()
 }
-import sql from '../lib/db'
+import { publicSql } from '../lib/db'
 import VistaSocialBoost from './VistaSocialBoost'
 
 const ESTADO_CAMP_COLORS = {
@@ -206,39 +206,16 @@ export default function VistaClienteDashboard({ token }) {
   async function fetchData(t) {
     setLoading(true)
     try {
-      const tokenData = await sql`
-        SELECT ct.*, c.nombre AS client_nombre, c.color, c.slug, c.social_boost_activo
-        FROM client_tokens ct
-        JOIN clients c ON c.id = ct.client_id
-        WHERE ct.token = ${t} AND ct.activo = true
-        LIMIT 1
-      `
+      const tokenData = await publicSql('portalPorToken', t)
       if (tokenData.length === 0) {
-        const check = await sql`SELECT id FROM client_tokens WHERE token = ${t}`
+        const check = await publicSql('portalTokenExiste', t)
         setError(check.length === 0 ? 'not_found' : 'inactive')
         setLoading(false)
         return
       }
 
       const clientInfo = tokenData[0]
-      const camps = await sql`
-        SELECT
-          c.id, c.nombre, c.artista, c.cancion, c.estado,
-          c.fecha_inicio, c.fecha_termino, c.plataforma,
-          c.reporte_url_tt, c.reporte_url_ig,
-          c.tipo, c.contenidos_count, c.views_logradas, c.views_min, c.views_max,
-          c.budget_total, c.utilizable_pct, c.solicitado_por, c.es_legacy, c.moneda,
-          c.created_at,
-          COUNT(DISTINCT ci.id) AS total_influencers,
-          COUNT(DISTINCT CASE WHEN ci.video_link_tt != '' OR ci.video_link_ig != '' THEN ci.id END) AS videos_publicados,
-          COUNT(DISTINCT cp.id) AS total_playlists
-        FROM campaigns c
-        LEFT JOIN campaign_influencers ci ON ci.campaign_id = c.id
-        LEFT JOIN campaign_playlists cp ON cp.campaign_id = c.id
-        WHERE c.client_id = ${clientInfo.client_id}
-        GROUP BY c.id
-        ORDER BY c.created_at DESC
-      `
+      const camps = await publicSql('campanasDelPortal', clientInfo.client_id)
       setData({ client: clientInfo, camps })
     } catch (e) { console.error(e); setError('error') }
     setLoading(false)
@@ -250,11 +227,7 @@ export default function VistaClienteDashboard({ token }) {
 
     if (isPlaylisting) {
       try {
-        const playlists = await sql`
-          SELECT nombre, link FROM campaign_playlists
-          WHERE campaign_id = ${camp.id}
-          ORDER BY created_at ASC
-        `
+        const playlists = await publicSql('playlistsDeCampana', camp.id)
         setSelectedCamp({ ...camp, influencers: [], playlists })
       } catch (e) { console.error(e) }
       return
@@ -266,18 +239,7 @@ export default function VistaClienteDashboard({ token }) {
     }
 
     try {
-      const rows = await sql`
-        SELECT
-          i.nombre, i.ig_usuario, i.ig_seguidores, i.ig_link,
-          i.tt_usuario, i.tt_seguidores, i.tt_link,
-          i.tipos_contenido,
-          ci.video_link_tt, ci.video_link_ig, ci.boostcode
-        FROM campaign_influencers ci
-        JOIN influencers i ON i.id = ci.influencer_id
-        WHERE ci.campaign_id = ${camp.id}
-        ORDER BY
-          CASE WHEN ${camp.plataforma} = 'Instagram' THEN i.ig_seguidores ELSE i.tt_seguidores END DESC
-      `
+      const rows = await publicSql('influencersDeCampanaPortal', camp.id, camp.plataforma)
       setSelectedCamp({ ...camp, influencers: rows, playlists: [] })
     } catch (e) { console.error(e) }
   }
