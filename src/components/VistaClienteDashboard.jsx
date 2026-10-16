@@ -245,13 +245,13 @@ export default function VistaClienteDashboard({ token }) {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ fontSize: 13, color: '#AAA' }}>Cargando...</div>
     </div>
   )
 
   if (error) return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="glass-app" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ textAlign: 'center', color: '#AAA' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>◈</div>
         <div style={{ fontSize: 15, fontWeight: 500, color: '#555', marginBottom: 6 }}>
@@ -295,8 +295,8 @@ export default function VistaClienteDashboard({ token }) {
     const tdPad = isMobile ? '11px 12px' : '13px 16px'
 
     return (
-      <div style={{ minHeight: '100vh', background: '#F7F7F5', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ background: '#111', padding: isMobile ? '18px 16px' : '24px 40px' }}>
+      <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
+        <div className="portal-hero" style={{ '--brand': brandColor, margin: isMobile ? 10 : '16px 24px 0', padding: isMobile ? '18px 16px' : '26px 32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 24, height: 24, background: brandColor, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
               {client.client_nombre?.slice(0, 2).toUpperCase()}
@@ -603,8 +603,8 @@ export default function VistaClienteDashboard({ token }) {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ background: '#111', padding: isMobile ? '20px 16px 22px' : '32px 40px 28px' }}>
+    <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
+      <div className="portal-hero" style={{ '--brand': brandColor, margin: isMobile ? 10 : '16px 24px 0', padding: isMobile ? '20px 16px 22px' : '30px 32px 26px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 16 : 20 }}>
           <div style={{ width: isMobile ? 38 : 44, height: isMobile ? 38 : 44, borderRadius: 12, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 14 : 16, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
             {client.client_nombre?.slice(0, 2).toUpperCase()}
@@ -684,7 +684,7 @@ export default function VistaClienteDashboard({ token }) {
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <div className="filter-row" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             <input className="input" placeholder="Buscar campaña, artista..."
               value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, maxWidth: 280 }} />
             <select className="input" value={filterEstado} onChange={e => setFilterEstado(e.target.value)}>

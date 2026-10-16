@@ -57,7 +57,10 @@ body {
   background: var(--glass) !important;
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
-  border-color: var(--glass-border) !important;
+  /* (el borde izquierdo se respeta: algunas tarjetas lo usan con el color del cliente) */
+  border-top-color: var(--glass-border) !important;
+  border-right-color: var(--glass-border) !important;
+  border-bottom-color: var(--glass-border) !important;
   box-shadow: var(--glass-shadow);
 }
 .glass-app [style*="background: rgb(247, 247, 245)"],
@@ -245,3 +248,25 @@ body {
 /* Títulos de página más grandes y finos, estilo Apple */
 .glass-app h1 { font-size: 28px !important; font-weight: 600 !important; }
 @media (max-width: 720px) { .glass-app h1 { font-size: 22px !important; } }
+
+/* ── Portal del cliente: cabecera de vidrio oscuro ── */
+.portal-hero {
+  border-radius: 28px;
+  background:
+    radial-gradient(80% 140% at 0% 0%, color-mix(in srgb, var(--brand, #E8313A) 42%, transparent), transparent 62%),
+    radial-gradient(60% 120% at 100% 100%, rgba(242, 120, 90, 0.28), transparent 60%),
+    linear-gradient(160deg, rgba(30, 22, 28, 0.82), rgba(44, 28, 36, 0.66));
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  backdrop-filter: blur(30px) saturate(160%);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.10) inset, 0 20px 50px rgba(60, 30, 40, 0.22);
+}
+.portal-hero h1 { color: #fff; }
+/* Dentro de la cabecera oscura, lo blanco queda blanco (pestaña activa) */
+.portal-hero [style*="background: rgb(255, 255, 255)"] {
+  background: rgba(255, 255, 255, 0.94) !important;
+  -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+/* Filtros en una sola fila cuando hay espacio */
+.filter-row .input { width: auto; }
+.filter-row input.input { flex: 1; min-width: 200px; }

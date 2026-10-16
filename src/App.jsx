@@ -82,7 +82,7 @@ export default function App() {
 
   if (publicToken) return <VistaCliente token={publicToken} />
   if (reportToken) return <VistaReporte token={reportToken} />
-  if (clientDashboardToken) return <VistaClienteDashboard token={clientDashboardToken} />
+  if (clientDashboardToken) return <><Ambient /><VistaClienteDashboard token={clientDashboardToken} /></>
   if (editorToken) return <VistaEditor token={editorToken} />
 
   if (!auth) return <><Ambient /><Login onLogin={() => setAuth(true)} /></>
