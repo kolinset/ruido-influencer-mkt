@@ -55,8 +55,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
         {/* Panel deslizable desde abajo */}
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#fff', borderRadius: '18px 18px 0 0',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+          background: 'rgba(250, 246, 244, 0.86)', borderRadius: '26px 26px 0 0',
+          WebkitBackdropFilter: 'blur(30px) saturate(170%)', backdropFilter: 'blur(30px) saturate(170%)',
+          boxShadow: '0 -8px 30px rgba(73,50,60,0.14)',
           zIndex: 101, padding: '12px 0 32px',
           transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .28s cubic-bezier(.32,.72,0,1)',
@@ -120,12 +121,10 @@ export default function Sidebar({ page, setPage, onLogout }) {
         </div>
 
         {/* Barra de navegación fija en la parte inferior */}
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#fff', borderTop: '0.5px solid #E5E5E2',
-          display: 'flex', alignItems: 'center',
-          padding: '0 4px', paddingBottom: 'env(safe-area-inset-bottom)',
-          zIndex: 99, height: 56,
+        <div className="glass-panel" style={{
+          position: 'fixed', left: 10, right: 10, bottom: 'calc(8px + env(safe-area-inset-bottom))',
+          borderRadius: 22, display: 'flex', alignItems: 'center',
+          padding: '0 4px', zIndex: 99, height: 58,
         }}>
           {ALL_ITEMS.map(item => {
             const isActive = page === item.id
@@ -165,68 +164,41 @@ export default function Sidebar({ page, setPage, onLogout }) {
     )
   }
 
-  // ─── DESKTOP: sidebar lateral (igual a antes) ───
+  // ─── DESKTOP: panel de vidrio flotante ───
+  const navItem = item => {
+    const active = page === item.id
+    return (
+      <div key={item.id} onClick={() => setPage(item.id)} className={'nav-item' + (active ? ' nav-item-active' : '')}>
+        <span className="nav-icon">{item.icon}</span>
+        {item.label}
+      </div>
+    )
+  }
+
   return (
-    <aside style={{
-      width: 208, background: '#fff', borderRight: '0.5px solid #E5E5E2',
-      display: 'flex', flexDirection: 'column', flexShrink: 0, minHeight: '100vh',
+    <aside className="glass-panel" style={{
+      width: 220, margin: 14, marginRight: 0, borderRadius: 26,
+      display: 'flex', flexDirection: 'column', flexShrink: 0,
+      position: 'sticky', top: 14, height: 'calc(100vh - 28px)',
     }}>
-      <div style={{ padding: '20px 16px', borderBottom: '0.5px solid #E5E5E2', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 28, height: 28, background: '#E8313A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>K</div>
+      <div style={{ padding: '22px 18px 18px', display: 'flex', alignItems: 'center', gap: 11 }}>
+        <div className="brand-mark">K</div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>KOLINSET</div>
-          <div style={{ fontSize: 11, color: '#AAA' }}>Influencer MKT</div>
+          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '.02em' }}>KOLINSET</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>Influencer MKT</div>
         </div>
       </div>
 
-      <nav style={{ padding: '8px 0', flex: 1 }}>
-        <div style={{ padding: '10px 16px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#CCC' }}>Principal</div>
-        {items.map(item => (
-          <div key={item.id} onClick={() => setPage(item.id)} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 12px', margin: '1px 6px', borderRadius: 8,
-            cursor: 'pointer', fontSize: 13,
-            background: page === item.id ? '#FCEBEB' : 'transparent',
-            color: page === item.id ? '#A32D2D' : '#666',
-            transition: 'all .12s',
-          }}
-            onMouseEnter={e => { if (page !== item.id) e.currentTarget.style.background = '#F7F7F5' }}
-            onMouseLeave={e => { if (page !== item.id) e.currentTarget.style.background = 'transparent' }}
-          >
-            <span style={{ fontSize: 15, width: 16, textAlign: 'center' }}>{item.icon}</span>
-            {item.label}
-          </div>
-        ))}
-
-        <div style={{ padding: '14px 16px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#CCC' }}>Clientes</div>
-        {clientItems.map(item => (
-          <div key={item.id} onClick={() => setPage(item.id)} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 12px', margin: '1px 6px', borderRadius: 8,
-            cursor: 'pointer', fontSize: 13,
-            background: page === item.id ? '#FCEBEB' : 'transparent',
-            color: page === item.id ? '#A32D2D' : '#666',
-            transition: 'all .12s',
-          }}
-            onMouseEnter={e => { if (page !== item.id) e.currentTarget.style.background = '#F7F7F5' }}
-            onMouseLeave={e => { if (page !== item.id) e.currentTarget.style.background = 'transparent' }}
-          >
-            <span style={{ fontSize: 15, width: 16, textAlign: 'center' }}>{item.icon}</span>
-            {item.label}
-          </div>
-        ))}
+      <nav style={{ padding: '4px 10px', flex: 1, overflowY: 'auto' }}>
+        <div className="nav-section">Principal</div>
+        {items.map(navItem)}
+        <div className="nav-section" style={{ marginTop: 10 }}>Clientes</div>
+        {clientItems.map(navItem)}
       </nav>
 
-      <div style={{ padding: '12px 8px', borderTop: '0.5px solid #E5E5E2' }}>
-        <div onClick={onLogout} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 12px', borderRadius: 8,
-          cursor: 'pointer', fontSize: 13, color: '#AAA', transition: 'all .12s',
-        }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#FCEBEB'; e.currentTarget.style.color = '#A32D2D' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#AAA' }}
-        >
-          <span style={{ fontSize: 15, width: 16, textAlign: 'center' }}>→</span>
+      <div style={{ padding: 10 }}>
+        <div onClick={onLogout} className="nav-item nav-item-logout">
+          <span className="nav-icon">→</span>
           Cerrar sesión
         </div>
       </div>

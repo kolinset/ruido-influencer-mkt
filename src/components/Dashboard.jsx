@@ -54,12 +54,12 @@ function KPI({ label, value, sub, subColor }) {
   return (
     <div style={{
       background: '#fff', border: '0.5px solid #E5E5E2',
-      borderRadius: 12, padding: '16px 18px',
+      borderRadius: 12, padding: '18px 20px',
     }}>
       <div style={{ fontSize: 11, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 500, color: '#1A1A1A', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 30, fontWeight: 600, color: '#1A1A1A', lineHeight: 1, letterSpacing: '-.03em' }}>{value}</div>
       {sub && (
         <div style={{ fontSize: 11, color: subColor || '#AAA', marginTop: 6 }}>{sub}</div>
       )}
@@ -174,7 +174,7 @@ export default function Dashboard({ onNavigate }) {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
         <KPI label="Influencers en roster" value={data.influencers.length} sub={`${data.activos} activos`} subColor="#3B6D11" />
         <KPI label="Campañas totales" value={data.campaigns.length} sub={`${campsMes.length} este mes`} subColor="#0C447C" />
         <KPI label="Alcance TikTok roster" value={fmtSeg(data.totalSegTT)} sub="seguidores TikTok acumulados" />
@@ -211,7 +211,7 @@ export default function Dashboard({ onNavigate }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

@@ -85,12 +85,14 @@ export default function App() {
   if (clientDashboardToken) return <VistaClienteDashboard token={clientDashboardToken} />
   if (editorToken) return <VistaEditor token={editorToken} />
 
-  if (!auth) return <Login onLogin={() => setAuth(true)} />
+  if (!auth) return <><Ambient /><Login onLogin={() => setAuth(true)} /></>
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F7F5' }}>
+    <>
+    <Ambient />
+    <div className="glass-app" style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar page={page} setPage={handleSetPage} onLogout={handleLogout} />
-      <main style={{ flex: 1, minWidth: 0, paddingBottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom))' : 0 }}>
+      <main style={{ flex: 1, minWidth: 0, paddingBottom: isMobile ? 'calc(76px + env(safe-area-inset-bottom))' : 0 }}>
         {page === 'dashboard'      && <Dashboard onNavigate={setPage} />}
         {page === 'roster'         && <Roster />}
         {page === 'campanas'       && <Campanas initialCamp={campanaFromClient} />}
@@ -107,5 +109,11 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   )
+}
+
+// Fondo con luces difuminadas detrás de los paneles de vidrio
+function Ambient() {
+  return <div className="ambient" aria-hidden="true"><span className="o1" /><span className="o2" /><span className="o3" /><span className="o4" /></div>
 }

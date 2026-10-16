@@ -24,21 +24,20 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#F7F7F5',
+    <div className="glass-app" style={{
+      minHeight: '100vh', padding: 16,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{
         background: '#fff', border: '0.5px solid #E5E5E2',
-        borderRadius: 16, padding: '36px 32px', width: '100%', maxWidth: 360,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+        borderRadius: 28, padding: '40px 34px', width: '100%', maxWidth: 380,
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div style={{
-            width: 32, height: 32, background: '#E8313A', borderRadius: 8,
+            width: 36, height: 36, background: 'linear-gradient(145deg, #FF6A5C, #E8313A 60%, #B81D2A)', borderRadius: 11,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, fontWeight: 700, color: '#fff',
+            fontSize: 15, fontWeight: 700, color: '#fff', boxShadow: '0 6px 16px rgba(232,49,58,0.35)',
           }}>K</div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 500 }}>KOLINSET</div>
@@ -46,7 +45,7 @@ export default function Login({ onLogin }) {
           </div>
         </div>
 
-        <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 6 }}>Bienvenido</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Bienvenido</h1>
         <p style={{ fontSize: 13, color: '#AAA', marginBottom: 24 }}>Ingresá con tu cuenta para acceder.</p>
 
         <form onSubmit={handleSubmit}>
