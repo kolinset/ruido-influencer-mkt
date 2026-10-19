@@ -22,6 +22,7 @@ function normalizeSolicitante(raw) {
 import { publicSql } from '../lib/db'
 import VistaSocialBoost from './VistaSocialBoost'
 import Logo from './Logo'
+import ListaLinks from './ListaLinks'
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
@@ -235,7 +236,9 @@ export default function VistaClienteDashboard({ token }) {
     }
 
     if (isEspecial) {
-      setSelectedCamp({ ...camp, influencers: [], playlists: [] })
+      // Lista de videos (si falla, la campaña se abre igual sin la lista)
+      const links = await publicSql('linksDeCampana', camp.id).catch(() => [])
+      setSelectedCamp({ ...camp, influencers: [], playlists: [], links })
       return
     }
 
@@ -445,11 +448,14 @@ export default function VistaClienteDashboard({ token }) {
 
           {/* Vista Nano Blast / Clipping */}
           {(isNanoBlast || isClipping) && (
-            <div style={{ textAlign: 'center', padding: isMobile ? '32px 16px' : '48px 0', color: '#888', fontSize: 13 }}>
-              {hasAnyReporte
-                ? 'Usa los botones de métricas arriba para ver el reporte completo.'
-                : 'El reporte de métricas estará disponible próximamente.'}
-            </div>
+            <>
+              <ListaLinks links={selectedCamp.links} isMobile={isMobile} />
+              <div style={{ textAlign: 'center', padding: selectedCamp.links?.length ? '18px 0 0' : (isMobile ? '32px 16px' : '48px 0'), color: '#888', fontSize: 13 }}>
+                {hasAnyReporte
+                  ? 'Usa los botones de métricas arriba para ver el reporte completo.'
+                  : 'El reporte de métricas estará disponible próximamente.'}
+              </div>
+            </>
           )}
 
           {/* Vista Estándar — tabla influencers */}

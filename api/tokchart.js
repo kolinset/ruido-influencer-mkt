@@ -83,6 +83,20 @@ async function linksPendientes(campaignId, plat) {
   return { validos, todos, omitidos, convertidos, faltanConvertir }
 }
 
+// Clipping y Nano Blast: los links salen de la lista pegada (campaign_links), ya convertidos al guardarla.
+async function linksDeLista(campaignId) {
+  const rows = (await pool.query('SELECT url, link_original FROM campaign_links WHERE campaign_id = $1 ORDER BY posicion, created_at', [campaignId])).rows
+  const enviados = new Set((await pool.query("SELECT url FROM tokchart_links WHERE campaign_id = $1 AND plataforma = 'tiktok'", [campaignId])).rows.map(r => r.url))
+  const todos = new Set(), omitidos = []
+  for (const r of rows) {
+    const u = (r.url || '').trim()
+    if (u && isValidTikTokUrl(u)) todos.add(u)
+    else omitidos.push(r.link_original)
+  }
+  const lista = [...todos]
+  return { validos: lista.filter(u => !enviados.has(u)), todos: lista, omitidos, convertidos: 0, faltanConvertir: 0 }
+}
+
 async function marcarEnviados(campaignId, plat, urls) {
   for (const u of urls) {
     await pool.query('INSERT INTO tokchart_links (campaign_id, plataforma, url) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [campaignId, plat, u])
@@ -111,7 +125,9 @@ export default async function handler(req, res) {
       FROM campaigns c LEFT JOIN services s ON s.id = c.service_id WHERE c.id = $1`, [campaign_id])).rows[0]
     if (!camp) return res.status(404).json({ error: 'Campaña no encontrada' })
     const uuidActual = tt ? camp.tokchart_tt_uuid : camp.tokchart_ig_uuid
-    const conLinks = camp.tipo !== 'Clipping' && camp.tipo !== 'Nano Blast' && camp.tipo !== 'Playlisting'
+    const usaLista = tt && (camp.tipo === 'Clipping' || camp.tipo === 'Nano Blast')
+    const conLinks = usaLista || (camp.tipo !== 'Clipping' && camp.tipo !== 'Nano Blast' && camp.tipo !== 'Playlisting')
+    const obtenerLinks = usaLista ? () => linksDeLista(camp.id) : () => linksPendientes(camp.id, plataforma)
 
     // ───── Crear el reporte (siempre por botón) ─────
     if (action === 'create') {
@@ -125,7 +141,7 @@ export default async function handler(req, res) {
       if (camp.ft) body.end_date = camp.ft
       let validos = [], omitidos = [], convertidos = 0, faltanConvertir = 0
       if (conLinks) {
-        ({ validos, omitidos, convertidos, faltanConvertir } = await linksPendientes(camp.id, plataforma))
+        ({ validos, omitidos, convertidos, faltanConvertir } = await obtenerLinks())
         if (validos.length) body.links = validos
       }
 
@@ -148,7 +164,7 @@ export default async function handler(req, res) {
       if (!uuidActual) return res.status(200).json({ sinReporte: true })
       // Siempre se envía la lista COMPLETA de links de la campaña, en una sola petición.
       // (Según lo observado, Tokchart reemplaza la lista con lo que recibe: si se mandaran solo los nuevos, se perderían los anteriores.)
-      const { todos, omitidos, convertidos, faltanConvertir } = await linksPendientes(camp.id, plataforma)
+      const { todos, omitidos, convertidos, faltanConvertir } = await obtenerLinks()
       let enviados = 0
       if (todos.length) {
         await tokchart(`/campaigns/${tt ? 'tiktok' : 'instagram'}/${uuidActual}`, { links: todos })

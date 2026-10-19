@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
 import Logo from './Logo'
+import ListaLinks from './ListaLinks'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -181,7 +182,10 @@ export default function VistaCliente({ token }) {
       }
 
       if (isEspecial) {
+        // Lista de videos (si falla, la propuesta se muestra igual sin la lista)
+        const links = await publicSql('linksPorShareToken', t).catch(() => [])
         setCamp({
+          links,
           nombre: campInfo.camp_nombre,
           cliente: campInfo.cliente,
           plataforma: campInfo.plataforma || 'Ambas',
@@ -428,11 +432,14 @@ export default function VistaCliente({ token }) {
 
         {/* Vista Nano Blast / Clipping */}
         {(isNanoBlast || isClipping) && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#888', fontSize: 13 }}>
-            {hasAnyReporte
-              ? 'Usa los botones de métricas en el header para ver el reporte completo de esta campaña.'
-              : 'El reporte de métricas estará disponible próximamente.'}
-          </div>
+          <>
+            <ListaLinks links={camp.links} />
+            <div style={{ textAlign: 'center', padding: camp.links?.length ? '18px 0 0' : '40px 0', color: '#888', fontSize: 13 }}>
+              {hasAnyReporte
+                ? 'Usa los botones de métricas en el header para ver el reporte completo de esta campaña.'
+                : 'El reporte de métricas estará disponible próximamente.'}
+            </div>
+          </>
         )}
 
         {/* Vista Estándar — tabla influencers */}

@@ -5,6 +5,25 @@ export function isDesktopTikTok(url) {
   return /tiktok\.com\/@[^/]+\/(video|photo)\/\d+/.test(url || '')
 }
 
+// Saca el usuario y el ID del video de un link de escritorio de TikTok
+export function parseTikTok(url) {
+  const m = (url || '').match(/tiktok\.com\/@([^/?#]+)\/(?:video|photo)\/(\d+)/)
+  return m ? { handle: m[1], video_id: m[2] } : { handle: '', video_id: '' }
+}
+
+// Separa un texto pegado (de Excel, una lista, etc.) en links únicos, en el mismo orden
+export function extraerLinks(texto) {
+  const vistos = new Set()
+  const out = []
+  for (const parte of (texto || '').split(/[\s,;"]+/)) {
+    const l = parte.trim()
+    if (!/^https?:\/\//i.test(l) || vistos.has(l)) continue
+    vistos.add(l)
+    out.push(l)
+  }
+  return out
+}
+
 // Link corto/móvil que hay que convertir (vt., vm., tiktok.com/t/...)
 export function isMobileTikTok(url) {
   const u = (url || '').trim()

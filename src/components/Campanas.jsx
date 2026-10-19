@@ -5,6 +5,7 @@ import Modal from './Modal'
 import SharePanel from './SharePanel'
 import Reportes from './Reportes'
 import Pagos from './Pagos'
+import LinksCampana from './LinksCampana'
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
@@ -430,7 +431,7 @@ function CampFormFields({ form, setForm, error, clientsList, servicesList }) {
 
       {isNanoBlast && (
         <div className="fg">
-          <label className="label">Contenidos publicados</label>
+          <label className="label">Contenidos publicados (se actualiza solo con la lista de links)</label>
           <input className="input" type="number" value={form.contenidos_count}
             onChange={e => setForm(f => ({ ...f, contenidos_count: e.target.value }))}
             placeholder="Ej: 95" />
@@ -440,7 +441,7 @@ function CampFormFields({ form, setForm, error, clientsList, servicesList }) {
         <>
           <div className="form-row-2">
             <div className="fg">
-              <label className="label">Videos publicados</label>
+              <label className="label">Videos publicados (se actualiza solo con los links)</label>
               <input className="input" type="number" value={form.contenidos_count}
                 onChange={e => setForm(f => ({ ...f, contenidos_count: e.target.value }))}
                 placeholder="Ej: 45" />
@@ -1282,7 +1283,8 @@ export default function Campanas({ initialCamp = null }) {
                 {!isPlaylisting && !isReadOnly && [['tiktok', 'TikTok', showTT, currentCamp.tokchart_tt_uuid], ['instagram', 'Instagram', showIG, currentCamp.tokchart_ig_uuid]]
                   .filter(([, , visible]) => visible)
                   .map(([plataforma, etiqueta, , uuid]) => {
-                    const enviaLinks = !isEspecial
+                    // Clipping y Nano Blast envían su lista de links de TikTok; Playlisting no envía links
+                    const enviaLinks = !isEspecial || (plataforma === 'tiktok' && (currentCamp.tipo === 'Nano Blast' || currentCamp.tipo === 'Clipping'))
                     if (uuid && !enviaLinks) return null
                     return (
                       <button key={plataforma} className="btn-ghost" disabled={tokchartBusy === plataforma}
@@ -1361,6 +1363,15 @@ export default function Campanas({ initialCamp = null }) {
 
         <BudgetSummary camp={currentCamp} isMobile={isMobile} />
         <SharePanel camp={currentCamp} onUpdate={fetchCamps} />
+
+        {/* Clipping / Nano Blast: lista de links (en vez de influencers) */}
+        {(currentCamp.tipo === 'Nano Blast' || currentCamp.tipo === 'Clipping') && (
+          <LinksCampana camp={currentCamp} isReadOnly={isReadOnly} onChanged={async () => {
+            await fetchCamps()
+            // Si ya tiene reporte de TikTok en Tokchart, la lista nueva se envía sola
+            if (currentCamp.tokchart_tt_uuid) await tokchartSync('tiktok', true)
+          }} />
+        )}
 
         {/* Vista Playlisting */}
         {isPlaylisting && (

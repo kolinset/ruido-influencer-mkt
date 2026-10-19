@@ -110,6 +110,19 @@ export const PUBLIC_QUERIES = {
     ORDER BY
       CASE WHEN $2 = 'Instagram' THEN i.ig_seguidores ELSE i.tt_seguidores END DESC`,
 
+  // ───── Links de videos de Clipping / Nano Blast ─────
+  linksPorShareToken: `
+    SELECT l.url, l.link_original, l.handle
+    FROM campaign_links l
+    JOIN campaigns c ON c.id = l.campaign_id
+    WHERE c.share_token = $1 AND c.share_active = true
+    ORDER BY l.posicion, l.created_at`,
+
+  linksDeCampana: `
+    SELECT url, link_original, handle FROM campaign_links
+    WHERE campaign_id = $1
+    ORDER BY posicion, created_at`,
+
   // ───── Social Boost en el portal del cliente (VistaSocialBoost) ─────
   sbSemana: `SELECT id, sin_prioridad FROM sb_semanas WHERE inicio = $1`,
 
