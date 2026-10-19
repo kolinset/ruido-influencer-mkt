@@ -37,26 +37,26 @@
 .glass-app {
   color-scheme: light;
   --ink: #0E0F12;
-  --ink-soft: #6A4A38;
-  --ink-faint: #A5836B;
+  --ink-soft: #625A54;
+  --ink-faint: #A19890;
 
-  --glass: rgba(255, 251, 246, 0.62);
-  --glass-strong: rgba(255, 252, 248, 0.85);
-  --glass-soft: rgba(255, 246, 236, 0.45);
-  --glass-border: rgba(255, 255, 255, 0.85);
-  --glass-line: rgba(58, 22, 8, 0.08);
-  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 38px rgba(138, 46, 12, 0.10);
-  --blur: blur(26px) saturate(150%);
-  --input-bg: rgba(255, 255, 255, 0.62);
-  --input-bg-focus: rgba(255, 255, 255, 0.92);
-  --input-border: rgba(58, 22, 8, 0.10);
-  --hover: rgba(255, 255, 255, 0.55);
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass-soft: rgba(250, 247, 242, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.95);
+  --glass-line: rgba(14, 15, 18, 0.06);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 1) inset, 0 1px 2px rgba(14, 15, 18, 0.04), 0 12px 32px rgba(60, 40, 20, 0.06);
+  --blur: blur(24px) saturate(140%);
+  --input-bg: rgba(255, 255, 255, 0.85);
+  --input-bg-focus: #fff;
+  --input-border: rgba(14, 15, 18, 0.09);
+  --hover: rgba(255, 255, 255, 0.75);
   color: var(--ink);
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  background: #FBF3EA;
+  background: #FAF7F2;
   color: var(--ink);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
@@ -65,18 +65,17 @@ body {
 /* ── Fondo ambiental: luces difuminadas (solo dentro de la plataforma) ── */
 .ambient {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: radial-gradient(120% 90% at 50% 0%, #FFF9F2 0%, #FBF0E3 55%, #F6E2CB 100%);
+  background: linear-gradient(180deg, #FFFEFB 0%, #FAF7F2 55%, #F5F0E8 100%);
 }
 .ambient span {
   position: absolute; border-radius: 50%;
   animation: drift 30s ease-in-out infinite alternate;
 }
-/* Arcos de luz (como seda iluminada): anillos con borde naranja muy difuminado */
-/* Los mismos arcos de luz, más suaves sobre el fondo claro */
-.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 4px solid rgba(229, 138, 62, 0.75); filter: blur(8px); box-shadow: 0 0 60px 16px rgba(229, 138, 62, 0.30), inset 0 0 60px 10px rgba(229, 138, 62, 0.18); transform: rotate(-18deg); }
-.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 4px solid rgba(196, 80, 26, 0.55); filter: blur(9px); box-shadow: 0 0 70px 18px rgba(229, 138, 62, 0.28), inset 0 0 70px 12px rgba(244, 211, 174, 0.35); transform: rotate(8deg); animation-duration: 36s; }
-.ambient .o3 { width: 620px; height: 620px; top: 26%; left: 32%; background: radial-gradient(circle, rgba(244, 211, 174, 0.75), transparent 65%); filter: blur(40px); animation-duration: 42s; }
-.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 3px solid rgba(229, 138, 62, 0.45); filter: blur(9px); box-shadow: 0 0 50px 12px rgba(229, 138, 62, 0.22); transform: rotate(-35deg); animation-duration: 33s; }
+/* Detalles en naranjo: líneas finas de luz sobre el fondo crema */
+.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 1.5px solid rgba(229, 138, 62, 0.85); filter: blur(1.5px); box-shadow: 0 0 22px 2px rgba(229, 138, 62, 0.22); transform: rotate(-18deg); }
+.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 1.5px solid rgba(196, 80, 26, 0.7); filter: blur(1.5px); box-shadow: 0 0 24px 2px rgba(196, 80, 26, 0.18); transform: rotate(8deg); animation-duration: 36s; }
+.ambient .o3 { width: 620px; height: 620px; top: 22%; left: 30%; background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 65%); filter: blur(40px); animation-duration: 42s; }
+.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 1px solid rgba(229, 138, 62, 0.6); filter: blur(1px); box-shadow: 0 0 16px 1px rgba(229, 138, 62, 0.16); transform: rotate(-35deg); animation-duration: 33s; }
 @keyframes drift {
   from { translate: 0 0; scale: 1; }
   to   { translate: 40px -30px; scale: 1.06; }
@@ -273,9 +272,9 @@ body {
 }
 .nav-item:hover { background: var(--hover); color: var(--ink); }
 .nav-item-active {
-  background: rgba(255, 255, 255, 0.85); color: var(--ink); font-weight: 500;
-  border-color: rgba(229, 138, 62, 0.35);
-  box-shadow: 0 8px 22px rgba(196, 80, 26, 0.12);
+  background: #fff; color: var(--ink); font-weight: 500;
+  border-color: rgba(14, 15, 18, 0.05);
+  box-shadow: inset 3px 0 0 var(--k-orange), 0 6px 18px rgba(60, 40, 20, 0.07);
 }
 .nav-item-active .nav-icon { color: var(--k-orange); }
 .nav-icon { font-size: 15px; width: 18px; text-align: center; }
@@ -311,13 +310,16 @@ body {
 
 /* Chips negros (tipo de campaña, métricas): en claro van en café profundo */
 .glass-app [style*="background: rgb(26, 26, 26)"], .glass-app [style*="background: rgb(17, 17, 17)"] { background: var(--k-brown) !important; }
-.glass-app [style^="background: rgb(251, 239, 227)"], .glass-app [style*=" background: rgb(251, 239, 227)"] { background: rgba(229, 138, 62, 0.14) !important; }
+.glass-app [style^="background: rgb(251, 239, 227)"], .glass-app [style*=" background: rgb(251, 239, 227)"] { background: rgba(229, 138, 62, 0.10) !important; }
 /* Borde con luz cálida en tarjetas, como vidrio iluminado desde abajo a la izquierda */
 .glass-app .card, .glass-app [style*="background: rgb(255, 255, 255)"] {
-  background-image: radial-gradient(140% 90% at 0% 100%, rgba(229, 138, 62, 0.12), transparent 45%) !important;
+  background-image: none !important;
 }
-.glass-app ::placeholder { color: rgba(106, 74, 56, 0.45); }
+.glass-app ::placeholder { color: rgba(98, 90, 84, 0.5); }
 /* Barras de progreso en ámbar (como la referencia) */
 .glass-app [style*="background: rgb(99, 153, 34)"] { background: linear-gradient(90deg, #C4501A, #E58A3E 70%, #F4D3AE) !important; }
 /* Pestaña activa de la cabecera: crema con texto oscuro (va al final para ganarle al tema) */
 .portal-hero [style*="background: rgb(255, 255, 255)"] { color: var(--k-black) !important; }
+/* Detalle naranjo en el borde de las tarjetas al pasar el mouse y en los inputs al escribir */
+.glass-app .card:hover { border-color: rgba(229, 138, 62, 0.45); }
+.glass-app .input:focus { border-color: var(--k-amber); box-shadow: 0 0 0 3px rgba(229, 138, 62, 0.16); }

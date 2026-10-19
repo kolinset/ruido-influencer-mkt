@@ -56,9 +56,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
         {/* Panel deslizable desde abajo */}
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(253, 246, 238, 0.92)', borderRadius: '26px 26px 0 0',
+          background: 'rgba(255, 255, 255, 0.94)', borderRadius: '26px 26px 0 0',
           WebkitBackdropFilter: 'blur(30px) saturate(170%)', backdropFilter: 'blur(30px) saturate(170%)',
-          boxShadow: '0 -8px 30px rgba(138,46,12,0.16)',
+          boxShadow: '0 -8px 30px rgba(14,15,18,0.12)',
           zIndex: 101, padding: '12px 0 32px',
           transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .28s cubic-bezier(.32,.72,0,1)',

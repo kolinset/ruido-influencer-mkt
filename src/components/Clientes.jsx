@@ -3,14 +3,14 @@ import sql from '../lib/db'
 import Modal from './Modal'
 
 const AV_COLORS = [
-  { bg: '#F4D3AE', color: '#8A2E0C' },
-  { bg: '#F6DCC4', color: '#3A1608' },
-  { bg: '#F9C99A', color: '#8A2E0C' },
-  { bg: '#EFD9C8', color: '#C4501A' },
-  { bg: '#F2C3A0', color: '#3A1608' },
-  { bg: '#FBE6CF', color: '#C4501A' },
-  { bg: '#E9C6A8', color: '#3A1608' },
-  { bg: '#F7D9B8', color: '#8A2E0C' },
+  { bg: '#F6F0E8', color: '#C4501A' },
+  { bg: '#F3EEE7', color: '#8A2E0C' },
+  { bg: '#F7F1EA', color: '#C4501A' },
+  { bg: '#F2EDE6', color: '#3A1608' },
+  { bg: '#F6F0E8', color: '#E58A3E' },
+  { bg: '#F3EEE7', color: '#C4501A' },
+  { bg: '#F7F1EA', color: '#8A2E0C' },
+  { bg: '#F2EDE6', color: '#C4501A' },
 ]
 
 const PRESET_COLORS = [
