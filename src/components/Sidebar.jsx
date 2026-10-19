@@ -56,9 +56,9 @@ export default function Sidebar({ page, setPage, onLogout }) {
         {/* Panel deslizable desde abajo */}
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(22, 17, 16, 0.92)', borderRadius: '26px 26px 0 0',
+          background: 'rgba(253, 246, 238, 0.92)', borderRadius: '26px 26px 0 0',
           WebkitBackdropFilter: 'blur(30px) saturate(170%)', backdropFilter: 'blur(30px) saturate(170%)',
-          boxShadow: '0 -8px 30px rgba(0,0,0,0.5)',
+          boxShadow: '0 -8px 30px rgba(138,46,12,0.16)',
           zIndex: 101, padding: '12px 0 32px',
           transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .28s cubic-bezier(.32,.72,0,1)',
@@ -68,7 +68,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
 
           {/* Logo */}
           <div style={{ padding: '0 20px 14px', borderBottom: '0.5px solid #F0F0EE' }}>
-            <Logo height={18} />
+            <Logo height={18} dark />
             <div style={{ fontSize: 10.5, color: '#AAA', marginTop: 6, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
           </div>
 
@@ -81,7 +81,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
                   background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
-                  color: page === item.id ? '#F0B37A' : '#444',
+                  color: page === item.id ? '#8A2E0C' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -98,7 +98,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
                   background: page === item.id ? 'rgba(196,80,26,0.12)' : 'transparent',
-                  color: page === item.id ? '#F0B37A' : '#444',
+                  color: page === item.id ? '#8A2E0C' : '#444',
                   fontSize: 14.5, marginBottom: 2,
                 }}
               >
@@ -180,7 +180,7 @@ export default function Sidebar({ page, setPage, onLogout }) {
       position: 'sticky', top: 14, height: 'calc(100vh - 28px)',
     }}>
       <div style={{ padding: '24px 20px 18px' }}>
-        <Logo height={20} />
+        <Logo height={20} dark />
         <div style={{ fontSize: 10.5, color: 'var(--ink-faint)', marginTop: 7, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
       </div>
 

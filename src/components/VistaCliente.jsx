@@ -553,7 +553,7 @@ export default function VistaCliente({ token }) {
         )}
 
         <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
-          Propuesta generada por <Logo height={10} style={{ opacity: 0.45 }} />
+          Propuesta generada por <Logo height={10} dark style={{ opacity: 0.4 }} />
         </div>
       </div>
     </div>

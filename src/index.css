@@ -33,30 +33,30 @@
   --red-deep: #8A2E0C;
 }
 
-/* Tema oscuro de la plataforma */
+/* Tema claro de la plataforma: crema cálido con acentos de la paleta */
 .glass-app {
-  color-scheme: dark;
-  --ink: #F4E6D6;
-  --ink-soft: rgba(244, 222, 196, 0.72);
-  --ink-faint: rgba(244, 211, 174, 0.46);
+  color-scheme: light;
+  --ink: #0E0F12;
+  --ink-soft: #6A4A38;
+  --ink-faint: #A5836B;
 
-  --glass: rgba(24, 19, 18, 0.58);
-  --glass-strong: rgba(48, 34, 28, 0.72);
-  --glass-soft: rgba(244, 211, 174, 0.05);
-  --glass-border: rgba(244, 211, 174, 0.13);
-  --glass-line: rgba(244, 211, 174, 0.08);
-  --glass-shadow: 0 1px 0 rgba(244, 211, 174, 0.07) inset, 0 18px 44px rgba(0, 0, 0, 0.45);
-  --blur: blur(28px) saturate(140%);
-  --input-bg: rgba(244, 211, 174, 0.06);
-  --input-bg-focus: rgba(244, 211, 174, 0.10);
-  --input-border: rgba(244, 211, 174, 0.14);
-  --hover: rgba(244, 211, 174, 0.07);
+  --glass: rgba(255, 251, 246, 0.62);
+  --glass-strong: rgba(255, 252, 248, 0.85);
+  --glass-soft: rgba(255, 246, 236, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-line: rgba(58, 22, 8, 0.08);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 38px rgba(138, 46, 12, 0.10);
+  --blur: blur(26px) saturate(150%);
+  --input-bg: rgba(255, 255, 255, 0.62);
+  --input-bg-focus: rgba(255, 255, 255, 0.92);
+  --input-border: rgba(58, 22, 8, 0.10);
+  --hover: rgba(255, 255, 255, 0.55);
   color: var(--ink);
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  background: var(--k-black);
+  background: #FBF3EA;
   color: var(--ink);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
@@ -65,17 +65,18 @@ body {
 /* ── Fondo ambiental: luces difuminadas (solo dentro de la plataforma) ── */
 .ambient {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: radial-gradient(120% 90% at 50% 0%, #17110F 0%, var(--k-black) 60%);
+  background: radial-gradient(120% 90% at 50% 0%, #FFF9F2 0%, #FBF0E3 55%, #F6E2CB 100%);
 }
 .ambient span {
   position: absolute; border-radius: 50%;
   animation: drift 30s ease-in-out infinite alternate;
 }
 /* Arcos de luz (como seda iluminada): anillos con borde naranja muy difuminado */
-.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 4px solid rgba(240, 150, 70, 0.95); filter: blur(7px); box-shadow: 0 0 60px 18px rgba(196, 80, 26, 0.55), inset 0 0 60px 10px rgba(196, 80, 26, 0.35); transform: rotate(-18deg); }
-.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 4px solid rgba(229, 120, 50, 0.9); filter: blur(8px); box-shadow: 0 0 70px 20px rgba(196, 80, 26, 0.5), inset 0 0 70px 12px rgba(138, 46, 12, 0.4); transform: rotate(8deg); animation-duration: 36s; }
-.ambient .o3 { width: 620px; height: 620px; top: 26%; left: 32%; background: radial-gradient(circle, rgba(196, 80, 26, 0.32), transparent 65%); filter: blur(40px); animation-duration: 42s; }
-.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 3px solid rgba(229, 138, 62, 0.6); filter: blur(9px); box-shadow: 0 0 50px 14px rgba(196, 80, 26, 0.35); transform: rotate(-35deg); animation-duration: 33s; }
+/* Los mismos arcos de luz, más suaves sobre el fondo claro */
+.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 4px solid rgba(229, 138, 62, 0.75); filter: blur(8px); box-shadow: 0 0 60px 16px rgba(229, 138, 62, 0.30), inset 0 0 60px 10px rgba(229, 138, 62, 0.18); transform: rotate(-18deg); }
+.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 4px solid rgba(196, 80, 26, 0.55); filter: blur(9px); box-shadow: 0 0 70px 18px rgba(229, 138, 62, 0.28), inset 0 0 70px 12px rgba(244, 211, 174, 0.35); transform: rotate(8deg); animation-duration: 36s; }
+.ambient .o3 { width: 620px; height: 620px; top: 26%; left: 32%; background: radial-gradient(circle, rgba(244, 211, 174, 0.75), transparent 65%); filter: blur(40px); animation-duration: 42s; }
+.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 3px solid rgba(229, 138, 62, 0.45); filter: blur(9px); box-shadow: 0 0 50px 12px rgba(229, 138, 62, 0.22); transform: rotate(-35deg); animation-duration: 33s; }
 @keyframes drift {
   from { translate: 0 0; scale: 1; }
   to   { translate: 40px -30px; scale: 1.06; }
@@ -176,7 +177,7 @@ body {
   transition: all .15s;
 }
 .btn-icon:hover { background: var(--glass-strong); color: var(--ink); }
-.btn-icon-danger:hover { background: rgba(229, 72, 77, 0.14); color: #F29B9B; border-color: rgba(229, 72, 77, 0.35); }
+.btn-icon-danger:hover { background: rgba(252, 235, 235, 0.9); color: #A32D2D; border-color: #F7C1C1; }
 
 /* ── Inputs ── */
 .input {
@@ -272,14 +273,14 @@ body {
 }
 .nav-item:hover { background: var(--hover); color: var(--ink); }
 .nav-item-active {
-  background: linear-gradient(180deg, rgba(196, 80, 26, 0.22), rgba(196, 80, 26, 0.12)); color: var(--k-cream); font-weight: 500;
+  background: rgba(255, 255, 255, 0.85); color: var(--ink); font-weight: 500;
   border-color: rgba(229, 138, 62, 0.35);
-  box-shadow: 0 0 0 0.5px rgba(229, 138, 62, 0.15), 0 8px 24px rgba(196, 80, 26, 0.18);
+  box-shadow: 0 8px 22px rgba(196, 80, 26, 0.12);
 }
-.nav-item-active .nav-icon { color: var(--k-amber); }
+.nav-item-active .nav-icon { color: var(--k-orange); }
 .nav-icon { font-size: 15px; width: 18px; text-align: center; }
 .nav-item-logout { color: var(--ink-faint); }
-.nav-item-logout:hover { background: rgba(229, 72, 77, 0.12); color: #F29B9B; }
+.nav-item-logout:hover { background: rgba(252, 235, 235, 0.8); color: #A32D2D; }
 
 /* Títulos de página más grandes y finos, estilo Apple */
 .glass-app h1 { font-size: 28px !important; font-weight: 600 !important; }
@@ -308,66 +309,14 @@ body {
 .filter-row .input { width: auto; }
 .filter-row input.input { flex: 1; min-width: 200px; }
 
-/* ── Tema oscuro sobre los colores fijos de cada pantalla ──
-   (texto oscuro → crema; chips pastel → tintes translúcidos que se leen sobre negro) */
-.glass-app [style^="color: rgb(26, 26, 26)"], .glass-app [style*=" color: rgb(26, 26, 26)"],
-.glass-app [style^="color: rgb(17, 17, 17)"], .glass-app [style*=" color: rgb(17, 17, 17)"] { color: var(--ink) !important; }
-.glass-app [style^="color: rgb(68, 68, 68)"], .glass-app [style*=" color: rgb(68, 68, 68)"],
-.glass-app [style^="color: rgb(85, 85, 85)"], .glass-app [style*=" color: rgb(85, 85, 85)"],
-.glass-app [style^="color: rgb(102, 102, 102)"], .glass-app [style*=" color: rgb(102, 102, 102)"],
-.glass-app [style^="color: rgb(95, 94, 90)"], .glass-app [style*=" color: rgb(95, 94, 90)"],
-.glass-app [style^="color: rgb(68, 68, 65)"], .glass-app [style*=" color: rgb(68, 68, 65)"] { color: var(--ink-soft) !important; }
-.glass-app [style^="color: rgb(136, 136, 136)"], .glass-app [style*=" color: rgb(136, 136, 136)"],
-.glass-app [style^="color: rgb(153, 153, 153)"], .glass-app [style*=" color: rgb(153, 153, 153)"],
-.glass-app [style^="color: rgb(170, 170, 170)"], .glass-app [style*=" color: rgb(170, 170, 170)"],
-.glass-app [style^="color: rgb(187, 187, 187)"], .glass-app [style*=" color: rgb(187, 187, 187)"],
-.glass-app [style^="color: rgb(204, 204, 204)"], .glass-app [style*=" color: rgb(204, 204, 204)"] { color: var(--ink-faint) !important; }
-.glass-app [style^="color: rgb(39, 80, 10)"], .glass-app [style*=" color: rgb(39, 80, 10)"],
-.glass-app [style^="color: rgb(8, 80, 65)"], .glass-app [style*=" color: rgb(8, 80, 65)"],
-.glass-app [style^="color: rgb(27, 94, 32)"], .glass-app [style*=" color: rgb(27, 94, 32)"],
-.glass-app [style^="color: rgb(59, 109, 17)"], .glass-app [style*=" color: rgb(59, 109, 17)"],
-.glass-app [style^="color: rgb(46, 125, 50)"], .glass-app [style*=" color: rgb(46, 125, 50)"] { color: #A8DD8A !important; }
-.glass-app [style^="color: rgb(99, 56, 6)"], .glass-app [style*=" color: rgb(99, 56, 6)"],
-.glass-app [style^="color: rgb(133, 79, 11)"], .glass-app [style*=" color: rgb(133, 79, 11)"],
-.glass-app [style^="color: rgb(113, 43, 19)"], .glass-app [style*=" color: rgb(113, 43, 19)"] { color: #F0B37A !important; }
-.glass-app [style^="color: rgb(12, 68, 124)"], .glass-app [style*=" color: rgb(12, 68, 124)"],
-.glass-app [style^="color: rgb(13, 71, 161)"], .glass-app [style*=" color: rgb(13, 71, 161)"] { color: #9CC2F2 !important; }
-.glass-app [style^="color: rgb(121, 31, 31)"], .glass-app [style*=" color: rgb(121, 31, 31)"],
-.glass-app [style^="color: rgb(163, 45, 45)"], .glass-app [style*=" color: rgb(163, 45, 45)"],
-.glass-app [style^="color: rgb(114, 36, 62)"], .glass-app [style*=" color: rgb(114, 36, 62)"],
-.glass-app [style^="color: rgb(107, 21, 96)"], .glass-app [style*=" color: rgb(107, 21, 96)"] { color: #F29B9B !important; }
-.glass-app [style^="color: rgb(60, 52, 137)"], .glass-app [style*=" color: rgb(60, 52, 137)"] { color: #C3B8F6 !important; }
-.glass-app [style^="background: rgb(234, 243, 222)"], .glass-app [style*=" background: rgb(234, 243, 222)"],
-.glass-app [style^="background: rgb(225, 245, 238)"], .glass-app [style*=" background: rgb(225, 245, 238)"],
-.glass-app [style^="background: rgb(232, 245, 233)"], .glass-app [style*=" background: rgb(232, 245, 233)"] { background: rgba(120, 200, 100, 0.14) !important; }
-.glass-app [style^="background: rgb(250, 238, 218)"], .glass-app [style*=" background: rgb(250, 238, 218)"],
-.glass-app [style^="background: rgb(255, 243, 205)"], .glass-app [style*=" background: rgb(255, 243, 205)"],
-.glass-app [style^="background: rgb(250, 236, 231)"], .glass-app [style*=" background: rgb(250, 236, 231)"] { background: rgba(229, 138, 62, 0.16) !important; }
-.glass-app [style^="background: rgb(230, 241, 251)"], .glass-app [style*=" background: rgb(230, 241, 251)"],
-.glass-app [style^="background: rgb(227, 242, 253)"], .glass-app [style*=" background: rgb(227, 242, 253)"],
-.glass-app [style^="background: rgb(230, 238, 255)"], .glass-app [style*=" background: rgb(230, 238, 255)"],
-.glass-app [style^="background: rgb(212, 244, 255)"], .glass-app [style*=" background: rgb(212, 244, 255)"] { background: rgba(110, 160, 240, 0.15) !important; }
-.glass-app [style^="background: rgb(252, 235, 235)"], .glass-app [style*=" background: rgb(252, 235, 235)"],
-.glass-app [style^="background: rgb(251, 234, 240)"], .glass-app [style*=" background: rgb(251, 234, 240)"],
-.glass-app [style^="background: rgb(254, 240, 251)"], .glass-app [style*=" background: rgb(254, 240, 251)"],
-.glass-app [style^="background: rgb(253, 232, 240)"], .glass-app [style*=" background: rgb(253, 232, 240)"],
-.glass-app [style^="background: rgb(253, 218, 218)"], .glass-app [style*=" background: rgb(253, 218, 218)"] { background: rgba(229, 72, 77, 0.15) !important; }
-.glass-app [style^="background: rgb(238, 237, 254)"], .glass-app [style*=" background: rgb(238, 237, 254)"],
-.glass-app [style^="background: rgb(243, 232, 255)"], .glass-app [style*=" background: rgb(243, 232, 255)"] { background: rgba(160, 130, 240, 0.16) !important; }
-.glass-app [style^="background: rgb(241, 239, 232)"], .glass-app [style*=" background: rgb(241, 239, 232)"],
-.glass-app [style^="background: rgb(229, 229, 226)"], .glass-app [style*=" background: rgb(229, 229, 226)"] { background: rgba(244, 211, 174, 0.08) !important; }
-.glass-app [style^="background: rgb(251, 239, 227)"], .glass-app [style*=" background: rgb(251, 239, 227)"] { background: rgba(196, 80, 26, 0.14) !important; }
-.glass-app [style^="background: rgb(26, 26, 26)"], .glass-app [style*=" background: rgb(26, 26, 26)"],
-.glass-app [style^="background: rgb(17, 17, 17)"], .glass-app [style*=" background: rgb(17, 17, 17)"] { background: rgba(244, 211, 174, 0.14) !important; }
-.glass-app [style*="solid rgb(243, 243, 241)"] { border-color: var(--glass-line) !important; }
-/* Números grandes en crema, como la referencia */
-.glass-app [style*="font-size: 26px"], .glass-app [style*="font-size: 28px"], .glass-app [style*="font-size: 30px"] { color: var(--k-cream); }
+/* Chips negros (tipo de campaña, métricas): en claro van en café profundo */
+.glass-app [style*="background: rgb(26, 26, 26)"], .glass-app [style*="background: rgb(17, 17, 17)"] { background: var(--k-brown) !important; }
+.glass-app [style^="background: rgb(251, 239, 227)"], .glass-app [style*=" background: rgb(251, 239, 227)"] { background: rgba(229, 138, 62, 0.14) !important; }
 /* Borde con luz cálida en tarjetas, como vidrio iluminado desde abajo a la izquierda */
 .glass-app .card, .glass-app [style*="background: rgb(255, 255, 255)"] {
-  background-image: radial-gradient(140% 90% at 0% 100%, rgba(229, 138, 62, 0.10), transparent 45%) !important;
+  background-image: radial-gradient(140% 90% at 0% 100%, rgba(229, 138, 62, 0.12), transparent 45%) !important;
 }
-.glass-app ::placeholder { color: rgba(244, 211, 174, 0.35); }
-.glass-app option { background: #1B1513; color: var(--ink); }
+.glass-app ::placeholder { color: rgba(106, 74, 56, 0.45); }
 /* Barras de progreso en ámbar (como la referencia) */
 .glass-app [style*="background: rgb(99, 153, 34)"] { background: linear-gradient(90deg, #C4501A, #E58A3E 70%, #F4D3AE) !important; }
 /* Pestaña activa de la cabecera: crema con texto oscuro (va al final para ganarle al tema) */

@@ -59,7 +59,7 @@ function KPI({ label, value, sub, subColor }) {
       <div style={{ fontSize: 11, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontSize: 'clamp(22px, 6vw, 30px)', fontWeight: 600, color: 'var(--k-cream)', lineHeight: 1, letterSpacing: '-.03em', overflowWrap: 'anywhere' }}>{value}</div>
+      <div style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 600, color: 'var(--ink)', lineHeight: 1, letterSpacing: '-.03em', whiteSpace: 'nowrap' }}>{value}</div>
       {sub && (
         <div style={{ fontSize: 11, color: subColor || '#AAA', marginTop: 6 }}>{sub}</div>
       )}

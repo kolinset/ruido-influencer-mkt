@@ -35,7 +35,7 @@ export default function Login({ onLogin }) {
       }}>
         {/* Logo */}
         <div style={{ marginBottom: 30 }}>
-          <Logo height={24} />
+          <Logo height={24} dark />
           <div style={{ fontSize: 11, color: '#AAA', marginTop: 8, letterSpacing: '.08em', textTransform: 'uppercase' }}>Influencer MKT</div>
         </div>
 

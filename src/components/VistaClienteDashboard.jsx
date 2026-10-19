@@ -562,7 +562,7 @@ export default function VistaClienteDashboard({ token }) {
           )}
 
           <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
-            Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
+            Portal generado por <Logo height={10} dark style={{ opacity: 0.4 }} />
           </div>
         </div>
       </div>
@@ -640,7 +640,7 @@ export default function VistaClienteDashboard({ token }) {
         <div style={{ padding: isMobile ? '18px 16px' : '28px 40px' }}>
           <VistaSocialBoost isMobile={isMobile} />
           <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
-            Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
+            Portal generado por <Logo height={10} dark style={{ opacity: 0.4 }} />
           </div>
         </div>
       ) : (
@@ -857,7 +857,7 @@ export default function VistaClienteDashboard({ token }) {
         )}
 
         <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
-          Portal generado por <Logo height={10} style={{ opacity: 0.45 }} />
+          Portal generado por <Logo height={10} dark style={{ opacity: 0.4 }} />
         </div>
       </div>
       )}

@@ -468,7 +468,7 @@ export default function VistaReporte({ token }) {
         )}
 
         <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#CCC' }}>
-          Reporte generado por <Logo height={10} style={{ opacity: 0.45 }} />
+          Reporte generado por <Logo height={10} dark style={{ opacity: 0.4 }} />
         </div>
       </div>
     </div>
