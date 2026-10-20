@@ -475,7 +475,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
     if (!r.ok) return `\nTokchart: no se pudo enviar (${r.error}). Los videos quedaron guardados.`
     if (r.sinLinks) return ''
     if (r.creado) return `\nTokchart: se creó el reporte "${r.nombre}" con ${r.enviados} video(s).`
-    return `\nTokchart: ${r.enviados} video(s) enviados${r.reutilizado ? ' (mismo reporte de la canción anterior)' : ''}.`
+    return `\nTokchart: se enviaron los ${r.enviados} video(s) de la canción al reporte${r.reutilizado ? ' (el mismo de la canción anterior)' : ''}.`
   }
 
   async function agregar() {
@@ -503,7 +503,8 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
         if (r.length) nuevos++; else repetidos++
       }
       setModalAdd(false); setTexto('')
-      const tk = nuevos ? await enviarATokchart() : ''
+      // Siempre se manda la lista completa (aunque todos fueran repetidos)
+      const tk = (nuevos || repetidos) ? await enviarATokchart() : ''
       await cargar(); onChanged()
       alert(`Agregados: ${nuevos}` + (repetidos ? `\nRepetidos (ignorados): ${repetidos}` : '')
         + (sinConvertir ? `\nSin convertir: ${sinConvertir} (usá "Reintentar conversión")` : '')
@@ -584,10 +585,16 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {info.tokchart_url
               ? <a href={info.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>Reporte Tokchart ↗</a>
-              : <span style={{ fontSize: 12, color: '#C0392B', alignSelf: 'center' }}>Falta el link de Tokchart</span>}
+              : <span style={{ fontSize: 12, color: '#999', alignSelf: 'center' }}>Sin reporte de Tokchart (se crea al enviar los videos)</span>}
             {info.audio_url
               ? <a href={info.audio_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none' }}>♪ Audio ↗</a>
               : <span style={{ fontSize: 12, color: '#C0392B', alignSelf: 'center' }}>Falta el audio</span>}
+            <button className="btn-ghost" disabled={busy || !videos.length} onClick={async () => {
+              setBusy(true)
+              const tk = await enviarATokchart()
+              setBusy(false)
+              alert(tk.trim() || 'No hay videos con link válido para enviar.')
+            }}>{busy ? 'Enviando…' : '↻ Enviar a Tokchart'}</button>
             <button className="btn-ghost" onClick={abrirEditar}>Editar</button>
             <button className="btn-ghost" onClick={quitarDeSemana}>Quitar de la semana</button>
           </div>

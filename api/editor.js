@@ -94,8 +94,9 @@ export default async function handler(req, res) {
         if (ins.rows.length) nuevos++; else repetidos++
       }
       // Los links nuevos se envían solos al reporte de Tokchart de la canción (si falla, los videos quedan guardados igual)
+      // Se envía siempre (aunque sean repetidos): así también llegan videos que se subieron antes y nunca se enviaron
       let tokchart = null
-      if (nuevos) {
+      if (nuevos || repetidos) {
         try { tokchart = await sincronizarCancionSB(pool, cancion_id) } catch (e) { tokchart = { ok: false, error: e.message } }
       }
       return res.status(200).json({ nuevos, repetidos, sinConvertir, sinUsuario, ignorados, tokchart })
