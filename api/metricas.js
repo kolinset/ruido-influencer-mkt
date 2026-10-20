@@ -40,6 +40,7 @@ export default async function handler(req, res) {
 
     const fuentes = [['tiktok', camp.reporte_url_tt], ['instagram', camp.reporte_url_ig]].filter(([, url]) => isTokchartReportUrl((url || '').trim()))
     const out = {}
+    const errores = {} // reportes que no se pudieron leer (para avisar en Roster)
     for (const [plat, url] of fuentes) {
       let fila = guardadas[plat]
       const fresco = forzado ? hace(fila?.fetched_at, 1) : (hace(fila?.fetched_at, FRESCO_MIN) || hace(fila?.intento_at, REINTENTO_MIN))
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
             RETURNING *`, [campaign_id, plat, String(e.message).slice(0, 300)])).rows[0]
         }
       }
+      if (fila?.error) errores[plat] = fila.error
       if (fila?.fetched_at) {
         out[plat] = {
           views: Number(fila.views) || 0, likes: Number(fila.likes) || 0, comments: Number(fila.comments) || 0,
@@ -74,7 +76,7 @@ export default async function handler(req, res) {
     }
 
     const plats = Object.values(out)
-    if (!plats.length) return res.status(200).json({ disponible: false })
+    if (!plats.length) return res.status(200).json({ disponible: false, errores })
     const suma = k => plats.reduce((a, p) => a + (p[k] || 0), 0)
     const total = { views: suma('views'), likes: suma('likes'), comments: suma('comments'), saves: suma('saves'), shares: suma('shares') }
 
@@ -94,6 +96,7 @@ export default async function handler(req, res) {
       plataformas: out,
       actualizado: plats.map(p => p.actualizado).sort()[0],
       aviso: plats.some(p => p.error) ? 'No se pudo actualizar desde Tokchart; se muestran los últimos datos guardados.' : '',
+      errores,
     })
   } catch (e) {
     console.error('metricas error:', e.message)

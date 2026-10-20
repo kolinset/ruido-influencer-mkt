@@ -24,10 +24,10 @@ function haceCuanto(fecha) {
   return `hace ${Math.round(h / 24)} días`
 }
 
-function Thumb({ id, size }) {
+function Thumb({ src, size }) {
   const [falla, setFalla] = useState(false)
-  if (falla || !id) return <div style={{ width: size * 0.5625, height: size, borderRadius: 8, background: '#F2EDE6', flexShrink: 0 }} />
-  return <img src={`https://assets.tokchart.com/video_thumbnails/${id}`} alt="" loading="lazy" onError={() => setFalla(true)}
+  if (falla || !src) return <div style={{ width: size * 0.5625, height: size, borderRadius: 8, background: '#F2EDE6', flexShrink: 0 }} />
+  return <img src={src} alt="" loading="lazy" onError={() => setFalla(true)}
     style={{ width: size * 0.5625, height: size, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#F2EDE6' }} />
 }
 
@@ -61,11 +61,17 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
       Cargando métricas…
     </div>
   )
+  // Reportes que no se pudieron leer (solo se avisa dentro de Roster, no al cliente)
+  const nombreRed = k => k === 'tiktok' ? 'TikTok' : 'Instagram'
+  const avisoErrores = admin && data?.errores && Object.keys(data.errores).length
+    ? Object.entries(data.errores).map(([k, e]) => `No se pudo leer el reporte de ${nombreRed(k)} en Tokchart (${e}). Se reintenta solo en unos minutos.`).join(' ')
+    : ''
+
   if (error || !data?.disponible) {
     if (!admin) return null
     return (
-      <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 18px', marginBottom: 16, fontSize: 12.5, color: '#888' }}>
-        {error ? `No se pudieron cargar las métricas: ${error}` : 'Las métricas aparecen solas cuando la campaña tiene su reporte de Tokchart.'}
+      <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 18px', marginBottom: 16, fontSize: 12.5, color: avisoErrores ? '#633806' : '#888' }}>
+        {error ? `No se pudieron cargar las métricas: ${error}` : avisoErrores || 'Las métricas aparecen solas cuando la campaña tiene su reporte de Tokchart.'}
       </div>
     )
   }
@@ -88,7 +94,8 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
     ['Likes', t.likes],
     ['Comentarios', t.comments],
     ['Compartidos', t.shares],
-    ['Guardados', t.saves],
+    // Los reportes de Instagram de Tokchart no traen "guardados"
+    ...(vista === 'instagram' ? [] : [['Guardados', t.saves]]),
   ]
 
   return (
@@ -101,7 +108,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
         </div>
       </div>
 
-      {data.aviso && <div style={{ fontSize: 12, color: '#633806', background: '#FAEEDA', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>{data.aviso}</div>}
+      {(avisoErrores || data.aviso) && <div style={{ fontSize: 12, color: '#633806', background: '#FAEEDA', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>{avisoErrores || data.aviso}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
         {kpis.map(([label, valor, grande]) => (
@@ -153,7 +160,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
                 fontSize: 11.5, fontWeight: 600,
                 background: i < 3 ? 'linear-gradient(145deg, #E58A3E, #C4501A)' : '#F2EDE6', color: i < 3 ? '#fff' : '#8A7F76',
               }}>{i + 1}</div>
-              <Thumb id={p.plat === 'tiktok' ? p.video_id : null} size={isMobile ? 44 : 52} />
+              <Thumb src={p.thumb || (p.plat === 'tiktok' ? `https://assets.tokchart.com/video_thumbnails/${p.video_id}` : null)} size={isMobile ? 44 : 52} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {ambas && vista === 'total' && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 4, marginRight: 6, verticalAlign: 1, background: p.plat === 'tiktok' ? '#1A1A1A' : '#FDE8F0', color: p.plat === 'tiktok' ? '#fff' : '#C2185B' }}>{p.plat === 'tiktok' ? 'TT' : 'IG'}</span>}

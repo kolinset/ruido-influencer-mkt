@@ -43,7 +43,8 @@ export function parseReport(html) {
     const exacto = t.detalle.match(/([\d,]+)\s+total/i)
     return exacto ? entero(exacto[1]) : abreviado(t.corto)
   }
-  const views = total('views')
+  // En TikTok la tarjeta se llama "Views"; en los reportes de Instagram, "Plays"
+  const views = total('views') ?? total('plays')
   if (views == null) throw new Error('No se encontraron las views en el reporte (¿cambió el diseño de Tokchart?)')
   const eng = tarjetas['avg engagement']
   const engagement = eng ? decimal((eng.detalle.match(/([\d.]+)%\s*exact/i) || [])[1] ?? eng.corto) : null
@@ -57,9 +58,10 @@ export function parseReport(html) {
     const celdas = [...m[2].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1])
     const link = (m[2].match(/href="(https:\/\/www\.(?:tiktok|instagram)\.com\/[^"]+)"/) || [])[1] || ''
     const handle = (m[2].match(/>\s*@([^<\s]+)\s*</) || [])[1] || ''
+    const thumb = (m[2].match(/<img[^>]+src="(https:\/\/assets\.tokchart\.com\/[^"]+)"/) || [])[1] || ''
     const val = (nombre, fn) => { const i = col(nombre); return i >= 0 && celdas[i] != null ? fn(texto(celdas[i])) : null }
     posts.push({
-      video_id: m[1], link, handle,
+      video_id: m[1], link, handle, thumb,
       followers: val('followers', abreviado),
       fecha: val('uploaded', s => s) || '',
       engagement: val('engagement', decimal),

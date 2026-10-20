@@ -300,8 +300,9 @@ export default function VistaClienteDashboard({ token }) {
     const viewsDe = postsTk.length ? (inf => {
       const sumar = arr => arr.length ? arr.reduce((a, p) => a + (p.views || 0), 0) : null
       const id = parseTikTok(inf.video_link_tt).video_id
-      const igLink = (inf.video_link_ig || '').replace(/\/$/, '')
-      const encontrados = postsTk.filter(p => (id && p.video_id === id) || (igLink && (p.link || '').replace(/\/$/, '') === igLink))
+      const codigoIG = l => ((l || '').match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || [])[1] || ''
+      const ig = codigoIG(inf.video_link_ig)
+      const encontrados = postsTk.filter(p => (id && p.video_id === id) || (ig && codigoIG(p.link) === ig))
       return sumar(encontrados)
     }) : null
 
