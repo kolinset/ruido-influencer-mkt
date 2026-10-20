@@ -201,8 +201,8 @@ export default function SocialBoost() {
             Sin prioridades esta semana (mismo reparto para todas)
           </label>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <div className="card" style={{ padding: '12px 14px', width: 320, maxWidth: '100%' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', justifyContent: 'flex-end', minWidth: 0, maxWidth: '100%' }}>
+          <div className="card" style={{ padding: '12px 14px', width: 320, minWidth: 0, flex: '0 1 320px' }}>
             <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: '#AAA', marginBottom: 8 }}>Semana anterior · canciones usadas</div>
             {prevSlots.length === 0 ? <div style={{ fontSize: 12, color: '#BBB' }}>Sin datos</div> : (
               <div>
@@ -217,7 +217,7 @@ export default function SocialBoost() {
               </div>
             )}
           </div>
-          <button className="btn-ghost" title="Configuración" style={{ width: 36, height: 36, padding: 0, fontSize: 16 }} onClick={() => setVista('config')}>⚙</button>
+          <button className="btn-ghost" title="Configuración" style={{ width: 38, height: 38, padding: 0, fontSize: 16, flexShrink: 0 }} onClick={() => setVista('config')}>⚙</button>
         </div>
       </div>
 

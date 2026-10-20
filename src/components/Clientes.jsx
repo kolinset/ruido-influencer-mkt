@@ -127,7 +127,7 @@ export default function Clientes({ onSelectCliente }) {
   )
 
   return (
-    <div style={{ padding: '20px 24px' }}>
+    <div className="page-pad">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500 }}>Clientes</h1>

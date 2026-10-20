@@ -1249,7 +1249,7 @@ export default function Campanas({ initialCamp = null }) {
             onClick={() => { setCurrentCamp(null); setCampTab('influencers') }}>
             ← Volver a campañas
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: isMobile ? 12 : 8 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
                 <h1 style={{ fontSize: isMobile ? 16 : 20, fontWeight: 500 }}>{currentCamp.nombre}</h1>
@@ -1262,7 +1262,7 @@ export default function Campanas({ initialCamp = null }) {
                 {currentCamp.artista && <span style={{ fontSize: 12, color: '#888' }}>· {currentCamp.artista}{currentCamp.cancion ? ` — "${currentCamp.cancion}"` : ''}</span>}
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', flexWrap: 'wrap', gap: 6, flexShrink: 0, alignItems: isMobile ? 'center' : 'flex-end' }}>
               {hasReporteTT && (
                 <a href={currentCamp.reporte_url_tt} target="_blank" rel="noopener noreferrer"
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 8, fontSize: 11.5, background: '#1A1A1A', color: '#fff', textDecoration: 'none', whiteSpace: 'nowrap' }}>
@@ -1275,7 +1275,7 @@ export default function Campanas({ initialCamp = null }) {
                   <span style={{ fontSize: 10, background: '#FEF0FB', color: '#6B1560', padding: '1px 4px', borderRadius: 3 }}>IG</span> Métricas
                 </a>
               )}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                 <button className="btn-ghost" onClick={openEditCamp} style={{ fontSize: 11.5, padding: '5px 10px' }}>✎ Editar</button>
                 <button className="btn-ghost" onClick={() => duplicateCamp(currentCamp)} disabled={duplicatingCampId === currentCamp.id} style={{ fontSize: 11.5, padding: '5px 10px' }}>
                   {duplicatingCampId === currentCamp.id ? 'Duplicando...' : '⧉ Duplicar'}
@@ -1459,7 +1459,7 @@ export default function Campanas({ initialCamp = null }) {
         {/* Tabs estándar */}
         {!isEspecial && (
           <>
-            <div style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, marginBottom: 20, width: 'fit-content', border: '0.5px solid #E5E5E2' }}>
+            <div className="tabs-scroll" style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, marginBottom: 20, width: 'fit-content', border: '0.5px solid #E5E5E2' }}>
               {TABS_DETALLE.map(t => (
                 <div key={t} onClick={() => setCampTab(t)} style={{
                   padding: '6px 18px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5,
@@ -1502,6 +1502,50 @@ export default function Campanas({ initialCamp = null }) {
                 <div className="card" style={{ overflow: 'hidden' }}>
                   {currentCamp.influencers.length === 0 ? (
                     <div style={{ padding: 40, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Agrega influencers desde el roster.</div>
+                  ) : isMobile ? (
+                    // Celular: una tarjeta por influencer en vez de una tabla ancha
+                    <div>
+                      {currentCamp.influencers.map((inf, i) => {
+                        const ec = ESTADO_INF_COLORS[inf.ci_estado] || ESTADO_INF_COLORS['Contactado']
+                        const tipos = inf.tipos_contenido || []
+                        return (
+                          <div key={inf.ci_id} style={{ padding: '14px 14px 12px', borderBottom: i < currentCamp.influencers.length - 1 ? '0.5px solid #F0F0EE' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <Avatar nombre={inf.nombre} index={i} size={34} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.nombre}</div>
+                                <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 1 }}>
+                                  {[showTT && inf.tt_seguidores > 0 && `TT ${fmtSeg(inf.tt_seguidores)}`, showIG && inf.ig_seguidores > 0 && `IG ${fmtSeg(inf.ig_seguidores)}`, `${inf.piezas} pieza${Number(inf.piezas) === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+                                </div>
+                              </div>
+                              {!isReadOnly && (
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                  <button className="btn-icon" style={{ width: 36, height: 36 }} onClick={() => openEditCI(inf)}>✎</button>
+                                  <button className="btn-icon btn-icon-danger" style={{ width: 36, height: 36 }} onClick={() => setDeleteCI(inf.ci_id)}>✕</button>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                              <span style={{ background: ec.bg, color: ec.color, padding: '3px 10px', borderRadius: 20, fontSize: 11.5 }}>{inf.ci_estado}</span>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontWeight: 600, fontSize: 14 }}>{fmtMoney(calcCosto(inf.costo, inf.tipo_facturacion), currentCamp.moneda)}</span>
+                                {inf.tipo_facturacion !== 'sin_recargo' && <span style={{ fontSize: 10.5, color: '#AAA', marginLeft: 6 }}>base {fmtMoney(inf.costo, currentCamp.moneda)}</span>}
+                              </div>
+                            </div>
+                            {(tipos.length > 0 || inf.video_link_tt || inf.video_link_ig || inf.boostcode) && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                                {tipos.slice(0, 3).map(t => { const c = TIPO_COLORS[t] || TIPO_COLORS['Otros']; return <span key={t} style={{ background: c.bg, color: c.color, padding: '2px 8px', borderRadius: 20, fontSize: 10.5 }}>{t}</span> })}
+                                {inf.boostcode && <span style={{ fontFamily: 'monospace', fontSize: 11.5, background: '#F7F7F5', padding: '2px 8px', borderRadius: 6, color: '#555' }}>{inf.boostcode}</span>}
+                                <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+                                  {showTT && inf.video_link_tt && <a href={inf.video_link_tt} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Video TT ↗</a>}
+                                  {showIG && inf.video_link_ig && <a href={inf.video_link_ig} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Post IG ↗</a>}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   ) : (
                     <>
                       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -1823,7 +1867,7 @@ export default function Campanas({ initialCamp = null }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, border: '0.5px solid #E5E5E2', flex: isMobile ? '1 1 100%' : 'none' }}>
+        <div className="tabs-scroll" style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, border: '0.5px solid #E5E5E2', flex: isMobile ? '1 1 100%' : 'none' }}>
           {TABS_LISTA.map(t => {
             const count = t === 'Todas' ? camps.length : camps.filter(c => c.estado === t.slice(0, -1)).length
             return (
@@ -1866,8 +1910,8 @@ export default function Campanas({ initialCamp = null }) {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
                   <div style={{ fontSize: 14, fontWeight: 500, flex: 1, paddingRight: 8 }}>{camp.nombre}</div>
-                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                    <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 20, background: ec.bg, color: ec.color }}>{camp.estado}</span>
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10.5, padding: '2px 8px', borderRadius: 20, background: ec.bg, color: ec.color }}>{camp.estado}</span>
                     <button className="btn-icon" title="Duplicar campaña" disabled={duplicatingCampId === camp.id}
                       onClick={e => { e.stopPropagation(); duplicateCamp(camp) }}>
                       {duplicatingCampId === camp.id ? '…' : '⧉'}

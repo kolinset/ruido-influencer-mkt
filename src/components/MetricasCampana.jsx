@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getMetricas } from '../lib/links'
+import useIsMobile from '../lib/useIsMobile'
 
 // Métricas de la campaña (leídas del reporte de Tokchart): tarjetas con totales y ranking de videos.
 // Se usa en el portal del cliente, la propuesta y Roster. `onData` avisa los datos al padre
@@ -30,7 +31,8 @@ function Thumb({ id, size }) {
     style={{ width: size * 0.5625, height: size, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#F2EDE6' }} />
 }
 
-export default function MetricasCampana({ campaignId, isMobile, admin = false, onData }) {
+export default function MetricasCampana({ campaignId, admin = false, onData }) {
+  const isMobile = useIsMobile()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -96,9 +98,9 @@ export default function MetricasCampana({ campaignId, isMobile, admin = false, o
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
         {kpis.map(([label, valor, grande]) => (
-          <div key={label} style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 16px', gridColumn: grande && isMobile ? 'span 2' : undefined }}>
+          <div key={label} style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 16px', }}>
             <div style={{ fontSize: 10.5, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>{label}</div>
-            <div style={{ fontSize: grande ? 30 : 22, fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1, color: grande ? '#C4501A' : undefined }}>{fmt(valor)}</div>
+            <div style={{ fontSize: grande ? (isMobile ? 26 : 30) : (isMobile ? 20 : 22), fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1, color: grande ? '#C4501A' : undefined }}>{fmt(valor)}</div>
             <div style={{ fontSize: 10.5, color: '#BBB', marginTop: 5 }}>{fmt(valor) !== exacto(valor) ? exacto(valor) : 'total'}</div>
           </div>
         ))}
@@ -128,7 +130,9 @@ export default function MetricasCampana({ campaignId, isMobile, admin = false, o
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.handle ? '@' + p.handle : 'Video'}</div>
                 <div style={{ fontSize: 11, color: '#AAA', marginTop: 2 }}>
-                  {p.followers ? `${fmt(p.followers)} seguidores · ` : ''}{exacto(p.likes)} likes{p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}% eng.` : ''}
+                  {isMobile
+                    ? `${exacto(p.likes)} likes${p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}%` : ''}`
+                    : `${p.followers ? `${fmt(p.followers)} seguidores · ` : ''}${exacto(p.likes)} likes${p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}% eng.` : ''}`}
                 </div>
                 <div style={{ height: 4, background: '#F2EDE6', borderRadius: 2, marginTop: 6, overflow: 'hidden', maxWidth: 260 }}>
                   <div style={{ height: '100%', width: Math.max(3, Math.round((p.views || 0) / maxViews * 100)) + '%', background: 'linear-gradient(90deg, #C4501A, #E58A3E)', borderRadius: 2 }} />

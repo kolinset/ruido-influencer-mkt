@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
 import Logo from './Logo'
+import useIsMobile from '../lib/useIsMobile'
 
 const AV_COLORS = [
   { bg: '#F6F0E8', color: '#C4501A' },
@@ -83,6 +84,7 @@ function PlatBadge({ plataforma }) {
 }
 
 export default function VistaReporte({ token }) {
+  const isMobile = useIsMobile()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -221,7 +223,7 @@ export default function VistaReporte({ token }) {
     <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
 
       {/* Header */}
-      <div className="portal-hero" style={{ margin: '16px 24px 0', padding: '28px 32px' }}>
+      <div className="portal-hero" style={{ margin: isMobile ? 10 : '16px 24px 0', padding: isMobile ? '20px 18px' : '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <Logo height={18} />
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', letterSpacing: '.05em' }}>— Reporte de campaña</span>
@@ -273,7 +275,7 @@ export default function VistaReporte({ token }) {
         </div>
       </div>
 
-      <div style={{ padding: '24px 40px' }}>
+      <div style={{ padding: isMobile ? '18px 14px' : '24px 40px' }}>
 
         {/* Tabs de contenido */}
         <div style={{ display: 'flex', gap: 2, background: '#EBEBEB', borderRadius: 10, padding: 3, marginBottom: 24, width: 'fit-content', border: '0.5px solid #E0E0E0' }}>

@@ -259,7 +259,7 @@ function InfluencerPanel({ inf, index, isMobile, onClose, onEdit }) {
           {/* Redes */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
             {inf.ig_seguidores > 0 && (
-              <div style={{ flex: 1, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ flex: 1, minWidth: 0, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
                 <div style={{ fontSize: 9.5, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Instagram</div>
                 <UserLink username={inf.ig_usuario} link={inf.ig_link} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -269,7 +269,7 @@ function InfluencerPanel({ inf, index, isMobile, onClose, onEdit }) {
               </div>
             )}
             {inf.tt_seguidores > 0 && (
-              <div style={{ flex: 1, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ flex: 1, minWidth: 0, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
                 <div style={{ fontSize: 9.5, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>TikTok</div>
                 <UserLink username={inf.tt_usuario} link={inf.tt_link} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -654,20 +654,20 @@ export default function Roster() {
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
                   {inf.ig_seguidores > 0 && (
-                    <div style={{ flex: 1, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ flex: 1, minWidth: 0, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
                       <div style={{ fontSize: 10, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Instagram</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#1A1A1A' }}>{inf.ig_usuario || '—'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#1A1A1A', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.ig_usuario || '—'}</span>
                         <span style={{ background: igSize.bg, color: igSize.color, padding: '0 5px', borderRadius: 10, fontSize: 10 }}>{igSize.label}</span>
                       </div>
                       <div style={{ fontSize: 11, color: '#AAA', marginTop: 1 }}>{fmtSeg(inf.ig_seguidores)}</div>
                     </div>
                   )}
                   {inf.tt_seguidores > 0 && (
-                    <div style={{ flex: 1, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ flex: 1, minWidth: 0, background: '#F7F7F5', borderRadius: 8, padding: '8px 10px' }}>
                       <div style={{ fontSize: 10, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>TikTok</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#1A1A1A' }}>{inf.tt_usuario || '—'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#1A1A1A', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.tt_usuario || '—'}</span>
                         <span style={{ background: ttSize.bg, color: ttSize.color, padding: '0 5px', borderRadius: 10, fontSize: 10 }}>{ttSize.label}</span>
                       </div>
                       <div style={{ fontSize: 11, color: '#AAA', marginTop: 1 }}>{fmtSeg(inf.tt_seguidores)}</div>

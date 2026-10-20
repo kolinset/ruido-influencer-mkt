@@ -65,18 +65,18 @@ export default function SharePanel({ camp, onUpdate }) {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={toggleActive} disabled={loading}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button className="btn-ghost" style={{ fontSize: 12, whiteSpace: 'nowrap' }} onClick={toggleActive} disabled={loading}>
           {camp.share_active ? 'Desactivar link' : 'Activar link'}
         </button>
-        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={regenerate} disabled={loading}>
+        <button className="btn-ghost" style={{ fontSize: 12, whiteSpace: 'nowrap' }} onClick={regenerate} disabled={loading}>
           Regenerar link
         </button>
         <a
           href={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ marginLeft: 'auto', fontSize: 12, color: '#C4501A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+          style={{ marginLeft: 'auto', fontSize: 12, color: '#C4501A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
         >
           Vista previa ↗
         </a>

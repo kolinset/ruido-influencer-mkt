@@ -111,7 +111,7 @@ export default function ClienteDashboard({ client, onBack, onOpenCampaign }) {
   const totalVideos = camps.reduce((s, c) => s + Number(c.videos_publicados), 0)
 
   return (
-    <div style={{ padding: '20px 24px' }}>
+    <div className="page-pad">
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>

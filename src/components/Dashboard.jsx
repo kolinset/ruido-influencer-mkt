@@ -165,7 +165,7 @@ export default function Dashboard({ onNavigate }) {
   const mesNombre = new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
 
   return (
-    <div style={{ padding: '20px 24px' }}>
+    <div className="page-pad">
 
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500 }}>Dashboard</h1>
@@ -188,7 +188,7 @@ export default function Dashboard({ onNavigate }) {
           style={{
             background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12,
             padding: '16px 20px', marginBottom: 20, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
             transition: 'all .15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#C4501A'; e.currentTarget.style.transform = 'translateY(-1px)' }}

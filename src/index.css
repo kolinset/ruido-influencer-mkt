@@ -323,3 +323,18 @@ body {
 /* Detalle naranjo en el borde de las tarjetas al pasar el mouse y en los inputs al escribir */
 .glass-app .card:hover { border-color: rgba(229, 138, 62, 0.45); }
 .glass-app .input:focus { border-color: var(--k-amber); box-shadow: 0 0 0 3px rgba(229, 138, 62, 0.16); }
+
+/* ── Celular ── */
+/* Filas de pestañas: en vez de salirse de la pantalla, se deslizan con el dedo */
+.tabs-scroll { overflow-x: auto; flex-wrap: nowrap !important; max-width: 100%; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tabs-scroll > * { flex-shrink: 0; white-space: nowrap; }
+/* Márgenes de página */
+.page-pad { padding: 20px 24px; }
+@media (max-width: 720px) {
+  .page-pad { padding: 16px; }
+  .glass-app .btn-ghost, .glass-app .btn-red { min-height: 38px; }
+  .form-row-2 { grid-template-columns: 1fr; gap: 0; }
+  /* Que nada empuje el ancho de la página */
+  .glass-app { overflow-x: clip; }
+}

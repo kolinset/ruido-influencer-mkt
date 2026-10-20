@@ -480,8 +480,51 @@ export default function VistaClienteDashboard({ token }) {
             </>
           )}
 
+          {/* Vista Estándar en celular — una tarjeta por influencer */}
+          {!isEspecial && isMobile && (
+            <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
+              {selectedCamp.influencers.map((inf, i) => {
+                const tipos = inf.tipos_contenido || []
+                const v = viewsDe ? viewsDe(inf) : null
+                return (
+                  <div key={i} style={{ padding: '13px 14px', borderBottom: i < selectedCamp.influencers.length - 1 ? '0.5px solid #F0F0EE' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar nombre={inf.nombre} index={i} size={34} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.nombre}</div>
+                        <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[showTT && inf.tt_usuario && `${inf.tt_usuario}${inf.tt_seguidores > 0 ? ' · ' + fmtSeg(inf.tt_seguidores) : ''}`, showIG && !showTT && inf.ig_usuario && `${inf.ig_usuario}${inf.ig_seguidores > 0 ? ' · ' + fmtSeg(inf.ig_seguidores) : ''}`].filter(Boolean).join('  ')}
+                        </div>
+                      </div>
+                      {v != null && (
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em' }}>{fmtNum(v)}</div>
+                          <div style={{ fontSize: 10, color: '#AAA' }}>views</div>
+                        </div>
+                      )}
+                    </div>
+                    {(tipos.length > 0 || inf.video_link_tt || inf.video_link_ig || (inf.boostcode && inf.boostcode.trim())) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                        {tipos.slice(0, 3).map(t => { const c = TIPO_COLORS[t] || TIPO_COLORS['Otros']; return <span key={t} style={{ background: c.bg, color: c.color, padding: '2px 8px', borderRadius: 20, fontSize: 10.5 }}>{t}</span> })}
+                        {inf.boostcode && inf.boostcode.trim() && <span style={{ fontFamily: 'monospace', fontSize: 11.5, fontWeight: 600, background: '#F7F7F5', border: '0.5px solid #E5E5E2', padding: '2px 8px', borderRadius: 6 }}>{inf.boostcode}</span>}
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
+                          {showTT && inf.video_link_tt && <a href={inf.video_link_tt} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Video ↗</a>}
+                          {showIG && inf.video_link_ig && <a href={inf.video_link_ig} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Post IG ↗</a>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div style={{ padding: '12px 14px', background: '#F7F7F5', borderTop: '0.5px solid #E5E5E2', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#888' }}>
+                <span>{selectedCamp.influencers.length} influencers</span>
+                <span>Alcance {fmtSeg(totalSeg)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Vista Estándar — tabla influencers */}
-          {!isEspecial && (
+          {!isEspecial && !isMobile && (
             <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 560 : 'auto' }}>

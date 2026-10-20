@@ -3,6 +3,7 @@ import { publicSql } from '../lib/db'
 import Logo from './Logo'
 import ListaLinks from './ListaLinks'
 import MetricasCampana from './MetricasCampana'
+import useIsMobile from '../lib/useIsMobile'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -140,6 +141,7 @@ function SpotifyIcon() {
 }
 
 export default function VistaCliente({ token }) {
+  const isMobile = useIsMobile()
   const [camp, setCamp] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -290,7 +292,7 @@ export default function VistaCliente({ token }) {
     <div className="glass-app" style={{ minHeight: '100vh', paddingBottom: 8 }}>
 
       {/* Header */}
-      <div className="portal-hero" style={{ margin: '16px 24px 0', padding: '28px 32px' }}>
+      <div className="portal-hero" style={{ margin: isMobile ? 10 : '16px 24px 0', padding: isMobile ? '20px 18px' : '28px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <Logo height={18} />
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '.05em' }}>— Influencer MKT</span>
@@ -299,7 +301,7 @@ export default function VistaCliente({ token }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: 22, fontWeight: 500, color: '#fff' }}>{camp.nombre}</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 500, color: '#fff', lineHeight: 1.2 }}>{camp.nombre}</h1>
               {isEspecial && (
                 <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 20, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)' }}>
                   {camp.tipo}
@@ -391,7 +393,7 @@ export default function VistaCliente({ token }) {
         </div>
       </div>
 
-      <div style={{ padding: '28px 40px' }}>
+      <div style={{ padding: isMobile ? '18px 14px' : '28px 40px' }}>
 
         {/* Métricas leídas del reporte de Tokchart (se actualizan solas cada 30 min) */}
         {campId && !isPlaylisting && <MetricasCampana campaignId={campId} />}
@@ -448,8 +450,45 @@ export default function VistaCliente({ token }) {
           </>
         )}
 
+        {/* Vista Estándar en celular — una tarjeta por influencer */}
+        {!isEspecial && isMobile && (
+          <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
+            {camp.influencers.map((inf, i) => {
+              const tipos = inf.tipos_contenido || []
+              return (
+                <div key={i} style={{ padding: '13px 14px', borderBottom: i < camp.influencers.length - 1 ? '0.5px solid #F0F0EE' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar nombre={inf.nombre} index={i} size={34} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.nombre}</div>
+                      <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {showTT && inf.tt_usuario && <span>TT {inf.tt_usuario}{inf.tt_seguidores > 0 ? ' · ' + fmtSeg(inf.tt_seguidores) : ''}</span>}
+                        {showIG && inf.ig_usuario && <span>IG {inf.ig_usuario}{inf.ig_seguidores > 0 ? ' · ' + fmtSeg(inf.ig_seguidores) : ''}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {(tipos.length > 0 || inf.video_link_tt || inf.video_link_ig || (inf.boostcode && inf.boostcode.trim())) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                      {tipos.slice(0, 3).map(t => { const c = TIPO_COLORS[t] || TIPO_COLORS['Otros']; return <span key={t} style={{ background: c.bg, color: c.color, padding: '2px 8px', borderRadius: 20, fontSize: 10.5 }}>{t}</span> })}
+                      {inf.boostcode && inf.boostcode.trim() && <span style={{ fontFamily: 'monospace', fontSize: 11.5, fontWeight: 600, background: '#F7F7F5', border: '0.5px solid #E5E5E2', padding: '2px 8px', borderRadius: 6 }}>{inf.boostcode}</span>}
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
+                        {showTT && inf.video_link_tt && <a href={inf.video_link_tt} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Video ↗</a>}
+                        {showIG && inf.video_link_ig && <a href={inf.video_link_ig} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Post IG ↗</a>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <div style={{ padding: '12px 14px', background: '#F7F7F5', borderTop: '0.5px solid #E5E5E2', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#888' }}>
+              <span>{camp.influencers.length} influencers</span>
+              <span>Alcance {fmtSeg(totalSeg)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Vista Estándar — tabla influencers */}
-        {!isEspecial && (
+        {!isEspecial && !isMobile && (
           <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>

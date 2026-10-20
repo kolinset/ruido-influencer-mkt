@@ -141,7 +141,7 @@ export default function Servicios() {
   }
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: 900 }}>
+    <div className="page-pad" style={{ maxWidth: 900 }}>
 
       {/* ── SERVICIOS ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -151,14 +151,14 @@ export default function Servicios() {
             {services.filter(s => s.activo).length} activos · {services.length} en total
           </p>
         </div>
-        <button className="btn-red" onClick={openNewSvc}>+ Nuevo servicio</button>
+        <button className="btn-red" style={{ whiteSpace: 'nowrap', flexShrink: 0 }} onClick={openNewSvc}>+ Nuevo servicio</button>
       </div>
 
       {loadingSvc ? (
         <div style={{ padding: 40, textAlign: 'center', color: '#AAA', fontSize: 13 }}>Cargando...</div>
       ) : (
         <div className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
             <thead>
               <tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
                 <th className="th" style={{ width: 200 }}>Servicio</th>
@@ -196,7 +196,7 @@ export default function Servicios() {
                 )
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -212,7 +212,7 @@ export default function Servicios() {
             {categorias.filter(c => c.activo).length} activas · {categorias.length} en total
           </p>
         </div>
-        <button className="btn-red" onClick={openNewCat}>+ Nueva categoría</button>
+        <button className="btn-red" style={{ whiteSpace: 'nowrap', flexShrink: 0 }} onClick={openNewCat}>+ Nueva categoría</button>
       </div>
 
       {loadingCat ? (

@@ -410,7 +410,7 @@ export default function PagosGlobales({ onBack }) {
               })}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
               <thead>
                 <tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
                   <th className="th" style={{ width: 240 }}>Influencer</th>
@@ -470,7 +470,7 @@ export default function PagosGlobales({ onBack }) {
                   <td />
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           )}
         </div>
       )}
