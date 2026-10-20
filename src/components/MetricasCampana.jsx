@@ -38,6 +38,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
   const [error, setError] = useState('')
   const [actualizando, setActualizando] = useState(false)
   const [verTodos, setVerTodos] = useState(false)
+  const [red, setRed] = useState('total') // 'total' | 'tiktok' | 'instagram'
 
   const cargar = useCallback(async (forzar = false) => {
     try {
@@ -69,8 +70,14 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
     )
   }
 
-  const t = data.total
+  // Con reporte de TikTok y de Instagram se puede ver el total o cada red por separado
+  const redes = ['tiktok', 'instagram'].filter(k => data.plataformas[k])
+  const ambas = redes.length > 1
+  const vista = ambas && red !== 'total' && data.plataformas[red] ? red : 'total'
+  const t = vista === 'total' ? data.total : data.plataformas[vista]
+  const engagement = vista === 'total' ? data.engagement : data.plataformas[vista].engagement
   const posts = Object.entries(data.plataformas)
+    .filter(([plat]) => vista === 'total' || plat === vista)
     .flatMap(([plat, p]) => (p.posts || []).map(x => ({ ...x, plat })))
     .sort((a, b) => (b.views || 0) - (a.views || 0))
   const visibles = verTodos ? posts : posts.slice(0, 10)
@@ -87,7 +94,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>Métricas de la campaña</div>
+        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>Métricas de la campaña{vista !== 'total' ? ` · ${vista === 'tiktok' ? 'TikTok' : 'Instagram'}` : ''}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: '#AAA' }}>
           <span>Actualizado {haceCuanto(data.actualizado)}</span>
           {admin && <button className="btn-ghost" style={{ fontSize: 11.5, padding: '5px 12px' }} onClick={actualizarAhora} disabled={actualizando}>{actualizando ? 'Actualizando…' : '↻ Actualizar ahora'}</button>}
@@ -104,14 +111,34 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
             <div style={{ fontSize: 10.5, color: '#BBB', marginTop: 5 }}>{fmt(valor) !== exacto(valor) ? exacto(valor) : 'total'}</div>
           </div>
         ))}
-        {data.engagement != null && (
+        {engagement != null && (
           <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 16px' }}>
             <div style={{ fontSize: 10.5, color: '#AAA', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Engagement</div>
-            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1 }}>{data.engagement.toFixed(2).replace('.', ',')}%</div>
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-.03em', lineHeight: 1 }}>{Number(engagement).toFixed(2).replace('.', ',')}%</div>
             <div style={{ fontSize: 10.5, color: '#BBB', marginTop: 5 }}>promedio</div>
           </div>
         )}
       </div>
+
+      {/* Selector Total / TikTok / Instagram (solo si la campaña tiene reporte en las dos redes) */}
+      {ambas && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+          {[['total', 'Total', data.total.views], ...redes.map(k => [k, k === 'tiktok' ? 'TikTok' : 'Instagram', data.plataformas[k].views])].map(([k, label, v]) => {
+            const activo = vista === k
+            return (
+              <button key={k} onClick={() => { setRed(k); setVerTodos(false) }} style={{
+                textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 12, padding: isMobile ? '10px 12px' : '11px 14px',
+                background: activo ? 'linear-gradient(180deg, rgba(229, 138, 62, 0.16), rgba(196, 80, 26, 0.10))' : '#fff',
+                border: activo ? '1.5px solid #C4501A' : '0.5px solid #E5E5E2',
+                boxShadow: activo ? '0 6px 16px rgba(196, 80, 26, 0.12)' : 'none', transition: 'all .15s',
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 500, color: activo ? '#C4501A' : '#888', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 600, letterSpacing: '-.02em', color: activo ? '#1A1A1A' : '#555' }}>{fmt(v)} <span style={{ fontSize: 10.5, fontWeight: 400, color: '#AAA' }}>views</span></div>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {posts.length > 0 && (
         <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
@@ -128,7 +155,10 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
               }}>{i + 1}</div>
               <Thumb id={p.plat === 'tiktok' ? p.video_id : null} size={isMobile ? 44 : 52} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.handle ? '@' + p.handle : 'Video'}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ambas && vista === 'total' && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 4, marginRight: 6, verticalAlign: 1, background: p.plat === 'tiktok' ? '#1A1A1A' : '#FDE8F0', color: p.plat === 'tiktok' ? '#fff' : '#C2185B' }}>{p.plat === 'tiktok' ? 'TT' : 'IG'}</span>}
+                  {p.handle ? '@' + p.handle : 'Video'}
+                </div>
                 <div style={{ fontSize: 11, color: '#AAA', marginTop: 2 }}>
                   {isMobile
                     ? `${exacto(p.likes)} likes${p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}%` : ''}`
