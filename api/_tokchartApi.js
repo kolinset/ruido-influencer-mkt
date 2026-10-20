@@ -29,3 +29,20 @@ export function uuidDeReporteTT(url) {
   const m = String(url || '').trim().match(/^https:\/\/(?:www\.)?tokchart\.com\/campaigns\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i)
   return m ? m[1].toLowerCase() : null
 }
+
+// UUID de un reporte de Instagram a partir de su link público (https://tokchart.com/campaigns/instagram/<uuid>)
+export function uuidDeReporteIG(url) {
+  const m = String(url || '').trim().match(/^https:\/\/(?:www\.)?tokchart\.com\/campaigns\/instagram\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i)
+  return m ? m[1].toLowerCase() : null
+}
+
+// Link de Instagram en el formato que pide Tokchart: https://www.instagram.com/reel/<código>/
+// Acepta /reel/, /reels/, /p/, /tv/ y el formato nuevo /<usuario>/reel/<código>; si no reconoce el link, devuelve null.
+export function reelIG(url) {
+  try {
+    const u = new URL(String(url || '').trim())
+    if (!/(^|\.)instagram\.com$/i.test(u.hostname)) return null
+    const m = u.pathname.match(/^\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/)
+    return m ? `https://www.instagram.com/reel/${m[1]}/` : null
+  } catch { return null }
+}

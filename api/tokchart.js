@@ -1,7 +1,7 @@
 import pg from 'pg'
 import { createClient } from '@supabase/supabase-js'
 import { isValidTikTokUrl, isTikTokHost, expandTikTok } from './_tiktok.js'
-import { tokchart, TT_REPORT_BASE, IG_REPORT_BASE } from './_tokchartApi.js'
+import { tokchart, TT_REPORT_BASE, IG_REPORT_BASE, uuidDeReporteTT, uuidDeReporteIG, reelIG } from './_tokchartApi.js'
 
 // Conecta ROSTER con la API de Tokchart. El token vive solo en el servidor
 // (variable TOKCHART_API_TOKEN en Vercel) y solo pueden usarlo usuarios con login.
@@ -22,7 +22,6 @@ async function mapLimit(items, limit, fn) {
   return out
 }
 
-const esReelIG = u => /^https?:\/\/(www\.)?instagram\.com\/(reel|reels)\//i.test(u)
 
 // Links de influencers de la campaña, válidos para enviar y todavía no enviados.
 // En TikTok, los links cortos (vt.tiktok.com...) se convierten aquí mismo y se corrige el link guardado.
@@ -33,11 +32,13 @@ async function linksPendientes(campaignId, plat) {
   const validos = [], omitidos = [], todos = []
   const porConvertir = []
   for (const row of rows) {
-    const u = (row.url || '').trim()
+    let u = (row.url || '').trim()
     if (!u) continue
     if (plat === 'tiktok' && !isValidTikTokUrl(u) && esMovilTT(u)) { porConvertir.push({ ...row, url: u }); continue }
-    const ok = plat === 'tiktok' ? isValidTikTokUrl(u) : esReelIG(u)
-    if (!ok) { omitidos.push(u); continue }
+    // Instagram: se manda en el formato que pide Tokchart (https://www.instagram.com/reel/<código>/)
+    const final = plat === 'tiktok' ? (isValidTikTokUrl(u) ? u : null) : reelIG(u)
+    if (!final) { omitidos.push(u); continue }
+    u = final
     if (!todos.includes(u)) todos.push(u)
     if (!enviados.has(u) && !validos.includes(u)) validos.push(u)
   }
@@ -103,7 +104,8 @@ export default async function handler(req, res) {
              c.tokchart_tt_uuid, c.tokchart_ig_uuid, c.reporte_url_tt, c.reporte_url_ig, s.nombre AS servicio
       FROM campaigns c LEFT JOIN services s ON s.id = c.service_id WHERE c.id = $1`, [campaign_id])).rows[0]
     if (!camp) return res.status(404).json({ error: 'Campaña no encontrada' })
-    const uuidActual = tt ? camp.tokchart_tt_uuid : camp.tokchart_ig_uuid
+    // Si el reporte se creó fuera de Roster y solo se pegó su link, el identificador se saca del link
+    const uuidActual = tt ? (camp.tokchart_tt_uuid || uuidDeReporteTT(camp.reporte_url_tt)) : (camp.tokchart_ig_uuid || uuidDeReporteIG(camp.reporte_url_ig))
     const usaLista = tt && (camp.tipo === 'Clipping' || camp.tipo === 'Nano Blast')
     const conLinks = usaLista || (camp.tipo !== 'Clipping' && camp.tipo !== 'Nano Blast' && camp.tipo !== 'Playlisting')
     const obtenerLinks = usaLista ? () => linksDeLista(camp.id) : () => linksPendientes(camp.id, plataforma)
@@ -137,7 +139,7 @@ export default async function handler(req, res) {
       else await pool.query('UPDATE campaigns SET tokchart_ig_uuid = $1, reporte_url_ig = COALESCE($2, reporte_url_ig) WHERE id = $3', [uuid, url, camp.id])
       if (validos.length && r.links_added === validos.length) await marcarEnviados(camp.id, plataforma, validos)
 
-      return res.status(200).json({ uuid, url, nombre, enviados: r.links_added ?? 0, intentados: validos.length, omitidos: omitidos.length, convertidos, faltanConvertir })
+      return res.status(200).json({ uuid, url, nombre, enviados: r.links_added ?? 0, intentados: validos.length, omitidos: omitidos.length, omitidosLista: omitidos.slice(0, 5), convertidos, faltanConvertir })
     }
 
     // ───── Enviar a Tokchart los links que faltan ─────
@@ -153,7 +155,7 @@ export default async function handler(req, res) {
         await marcarEnviados(camp.id, plataforma, todos)
         enviados = todos.length
       }
-      return res.status(200).json({ enviados, omitidos: omitidos.length, convertidos, faltanConvertir })
+      return res.status(200).json({ enviados, omitidos: omitidos.length, omitidosLista: omitidos.slice(0, 5), convertidos, faltanConvertir })
     }
 
     return res.status(400).json({ error: 'Acción desconocida' })

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import sql from '../lib/db'
-import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram, tokchartCall } from '../lib/links'
+import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram, tokchartCall, tieneReporteTokchart } from '../lib/links'
 import Modal from './Modal'
 import SharePanel from './SharePanel'
 import Reportes from './Reportes'
@@ -1053,6 +1053,14 @@ export default function Campanas({ initialCamp = null }) {
         setTokchartBusy(''); return
       }
       if (r.convertidos) await fetchCamps()
+      const etiqueta = plataforma === 'tiktok' ? 'TikTok' : 'Instagram'
+      const rechazados = (r.omitidos || 0) - (r.faltanConvertir || 0)
+      if (silencioso && r.sinReporte) {
+        alert(`Se guardó en ROSTER, pero la campaña no tiene reporte de ${etiqueta} en Tokchart: el link no se envió.`)
+      } else if (silencioso && rechazados > 0) {
+        alert(`Se guardó en ROSTER, pero ${rechazados} link(s) de ${etiqueta} no se enviaron a Tokchart porque no tienen un formato válido` +
+          (plataforma === 'instagram' ? ' (tiene que ser un reel: instagram.com/reel/…)' : '') + ':\n' + (r.omitidosLista || []).join('\n'))
+      }
       if (!silencioso) {
         alert(r.enviados ? `${r.enviados} link(s) enviados a Tokchart.` + resumenEnvio(r) : 'No había links nuevos para enviar.' + resumenEnvio(r))
       }
@@ -1080,7 +1088,7 @@ export default function Campanas({ initialCamp = null }) {
         ok++
       }
       await fetchCamps()
-      if (ok && currentCamp.tokchart_tt_uuid) await tokchartSync('tiktok', true)
+      if (ok && tieneReporteTokchart(currentCamp, 'tiktok')) await tokchartSync('tiktok', true)
       alert(`Convertidos: ${ok}` + (fallidos.length ? `\nNo se pudieron convertir (quedan como estaban): ${fallidos.join(', ')}` : ''))
     } catch (e) {
       console.error(e)
@@ -1134,8 +1142,8 @@ export default function Campanas({ initialCamp = null }) {
       setEditCIModal(false)
       await fetchCamps()
       // Si la campaña ya tiene reporte en Tokchart, los links nuevos se envían solos
-      if (form.video_link_tt && form.video_link_tt !== ttAnterior && currentCamp?.tokchart_tt_uuid) await tokchartSync('tiktok', true)
-      if (form.video_link_ig && form.video_link_ig !== igAnterior && currentCamp?.tokchart_ig_uuid) await tokchartSync('instagram', true)
+      if (form.video_link_tt && form.video_link_tt !== ttAnterior && tieneReporteTokchart(currentCamp, 'tiktok')) await tokchartSync('tiktok', true)
+      if (form.video_link_ig && form.video_link_ig !== igAnterior && tieneReporteTokchart(currentCamp, 'instagram')) await tokchartSync('instagram', true)
     } catch (e) { console.error(e) }
   }
 
@@ -1285,7 +1293,7 @@ export default function Campanas({ initialCamp = null }) {
                   {duplicatingCampId === currentCamp.id ? 'Duplicando...' : '⧉ Duplicar'}
                 </button>
                 <button className="btn-ghost" onClick={() => setChangeEstadoModal(true)} style={{ fontSize: 11.5, padding: '5px 10px' }}>Estado</button>
-                {!isPlaylisting && !isReadOnly && [['tiktok', 'TikTok', showTT, currentCamp.tokchart_tt_uuid], ['instagram', 'Instagram', showIG, currentCamp.tokchart_ig_uuid]]
+                {!isPlaylisting && !isReadOnly && [['tiktok', 'TikTok', showTT, tieneReporteTokchart(currentCamp, 'tiktok')], ['instagram', 'Instagram', showIG, tieneReporteTokchart(currentCamp, 'instagram')]]
                   .filter(([, , visible]) => visible)
                   .map(([plataforma, etiqueta, , uuid]) => {
                     // Clipping y Nano Blast envían su lista de links de TikTok; Playlisting no envía links
@@ -1381,7 +1389,7 @@ export default function Campanas({ initialCamp = null }) {
           <LinksCampana camp={currentCamp} isReadOnly={isReadOnly} onChanged={async () => {
             await fetchCamps()
             // Si ya tiene reporte de TikTok en Tokchart, la lista nueva se envía sola
-            if (currentCamp.tokchart_tt_uuid) await tokchartSync('tiktok', true)
+            if (tieneReporteTokchart(currentCamp, 'tiktok')) await tokchartSync('tiktok', true)
           }} />
         )}
 

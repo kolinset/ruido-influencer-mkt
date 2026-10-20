@@ -67,14 +67,22 @@ export async function convertMany(urls, limit = 3) {
   return out
 }
 
-// Instagram: solo quita parámetros de seguimiento (?stkn=, ?igsh=, utm_*)
+// Instagram: quita parámetros de seguimiento (?igsh=, utm_*) y deja los reels en el formato que pide
+// Tokchart: https://www.instagram.com/reel/<código>/ (acepta /reel/, /reels/, /p/, /tv/ y /<usuario>/reel/<código>)
 export function cleanInstagram(url) {
   const raw = (url || '').trim()
   if (!/instagram\.com/i.test(raw)) return raw
   try {
     const u = new URL(raw)
-    return u.origin + u.pathname
+    const m = u.pathname.match(/^\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/)
+    return m ? `https://www.instagram.com/reel/${m[1]}/` : u.origin + u.pathname
   } catch { return raw }
+}
+
+// ¿La campaña tiene reporte en Tokchart para esa red? (creado desde Roster o pegado su link)
+export function tieneReporteTokchart(camp, plataforma) {
+  if (plataforma === 'tiktok') return !!camp?.tokchart_tt_uuid || /^https:\/\/(www\.)?tokchart\.com\/campaigns\/[0-9a-f-]{36}\/?$/i.test(camp?.reporte_url_tt || '')
+  return !!camp?.tokchart_ig_uuid || /^https:\/\/(www\.)?tokchart\.com\/campaigns\/instagram\/[0-9a-f-]{36}\/?$/i.test(camp?.reporte_url_ig || '')
 }
 
 // ───── Tokchart (vía /api/tokchart, solo usuarios con login) ─────
