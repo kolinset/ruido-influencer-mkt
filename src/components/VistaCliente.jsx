@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { publicSql } from '../lib/db'
 import Logo from './Logo'
 import ListaLinks from './ListaLinks'
+import MetricasCampana from './MetricasCampana'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -142,6 +143,7 @@ export default function VistaCliente({ token }) {
   const [camp, setCamp] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [campId, setCampId] = useState(null)
 
   useEffect(() => { if (token) fetchPublicCamp(token) }, [token])
 
@@ -157,6 +159,7 @@ export default function VistaCliente({ token }) {
       }
 
       const campInfo = campData[0]
+      setCampId(campInfo.id)
       const isEspecial = campInfo.tipo === 'Nano Blast' || campInfo.tipo === 'Clipping'
       const isPlaylisting = campInfo.tipo === 'Playlisting'
 
@@ -389,6 +392,9 @@ export default function VistaCliente({ token }) {
       </div>
 
       <div style={{ padding: '28px 40px' }}>
+
+        {/* Métricas leídas del reporte de Tokchart (se actualizan solas cada 30 min) */}
+        {campId && !isPlaylisting && <MetricasCampana campaignId={campId} />}
 
         {/* Vista Playlisting */}
         {isPlaylisting && (

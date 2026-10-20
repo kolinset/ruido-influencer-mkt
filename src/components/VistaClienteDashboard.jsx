@@ -23,6 +23,8 @@ import { publicSql } from '../lib/db'
 import VistaSocialBoost from './VistaSocialBoost'
 import Logo from './Logo'
 import ListaLinks from './ListaLinks'
+import MetricasCampana from './MetricasCampana'
+import { parseTikTok } from '../lib/links'
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
@@ -195,6 +197,7 @@ export default function VistaClienteDashboard({ token }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedCamp, setSelectedCamp] = useState(null)
+  const [metricas, setMetricas] = useState(null) // métricas de Tokchart de la campaña abierta
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState('')
   const [filterAnio, setFilterAnio] = useState('')
@@ -224,6 +227,7 @@ export default function VistaClienteDashboard({ token }) {
   }
 
   async function openCamp(camp) {
+    setMetricas(null)
     const isPlaylisting = camp.tipo === 'Playlisting'
     const isEspecial = camp.tipo === 'Nano Blast' || camp.tipo === 'Clipping'
 
@@ -290,6 +294,16 @@ export default function VistaClienteDashboard({ token }) {
     const hasReporteTT = showTT && selectedCamp.reporte_url_tt
     const hasReporteIG = showIG && selectedCamp.reporte_url_ig
     const hasAnyReporte = hasReporteTT || hasReporteIG
+
+    // Views de cada influencer según Tokchart (se busca su video por ID de TikTok o por link)
+    const postsTk = metricas?.disponible ? Object.values(metricas.plataformas).flatMap(p => p.posts || []) : []
+    const viewsDe = postsTk.length ? (inf => {
+      const sumar = arr => arr.length ? arr.reduce((a, p) => a + (p.views || 0), 0) : null
+      const id = parseTikTok(inf.video_link_tt).video_id
+      const igLink = (inf.video_link_ig || '').replace(/\/$/, '')
+      const encontrados = postsTk.filter(p => (id && p.video_id === id) || (igLink && (p.link || '').replace(/\/$/, '') === igLink))
+      return sumar(encontrados)
+    }) : null
 
     const thStyle = {
       padding: isMobile ? '10px 12px' : '11px 16px', textAlign: 'left', fontSize: 10.5,
@@ -406,6 +420,14 @@ export default function VistaClienteDashboard({ token }) {
 
         <div style={{ padding: isMobile ? '20px 16px' : '24px 40px' }}>
 
+          {/* Métricas leídas del reporte de Tokchart (se actualizan solas cada 30 min) */}
+          {!isPlaylisting && (
+            <MetricasCampana key={selectedCamp.id} campaignId={selectedCamp.id} isMobile={isMobile} onData={d => {
+              setMetricas(d)
+              if (d?.disponible && d.total.views > 0) setSelectedCamp(c => c && c.id === selectedCamp.id ? { ...c, views_logradas: d.total.views } : c)
+            }} />
+          )}
+
           {/* Vista Playlisting */}
           {isPlaylisting && (
             <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
@@ -472,6 +494,7 @@ export default function VistaClienteDashboard({ token }) {
                       {hasVideoIG && <th style={{ ...thStyle, minWidth: 80 }}>Post IG</th>}
                       {hasVideoTT && <th style={{ ...thStyle, minWidth: 80 }}>Video TT</th>}
                       {hasBoostcode && <th style={{ ...thStyle, minWidth: 100 }}>Boostcode</th>}
+                      {viewsDe && <th style={{ ...thStyle, minWidth: 80, textAlign: 'right' }}>Views</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -537,6 +560,11 @@ export default function VistaClienteDashboard({ token }) {
                               {inf.boostcode && inf.boostcode.trim()
                                 ? <span style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 600, background: '#F7F7F5', border: '0.5px solid #E5E5E2', padding: '3px 9px', borderRadius: 6, color: '#1A1A1A' }}>{inf.boostcode}</span>
                                 : <span style={{ color: '#CCC', fontSize: 12 }}>—</span>}
+                            </td>
+                          )}
+                          {viewsDe && (
+                            <td style={{ padding: tdPad, verticalAlign: 'middle', textAlign: 'right', fontWeight: 600, fontSize: 13.5 }}>
+                              {viewsDe(inf) != null ? fmtNum(viewsDe(inf)) : <span style={{ color: '#CCC', fontSize: 12, fontWeight: 400 }}>—</span>}
                             </td>
                           )}
                         </tr>

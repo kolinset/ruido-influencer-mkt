@@ -91,3 +91,19 @@ export async function tokchartCall(body) {
   const json = await res.json().catch(() => ({}))
   return { ok: res.ok, status: res.status, ...json }
 }
+
+// ───── Métricas leídas de Tokchart (vía /api/metricas; funciona con o sin login) ─────
+export async function getMetricas(campaignId, forzar = false) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch('/api/metricas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify({ campaign_id: campaignId, forzar }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'No se pudieron cargar las métricas')
+  return json
+}
