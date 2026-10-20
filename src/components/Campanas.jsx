@@ -1160,10 +1160,14 @@ export default function Campanas({ initialCamp = null }) {
       (inf.tt_usuario || '').toLowerCase().includes(q)
     const tipos = inf.tipos_contenido || []
     const matchTipo = !infFilterTipo || tipos.includes(infFilterTipo)
-    const matchSize = !infFilterSize || (
-      getSize(inf.ig_seguidores).label === infFilterSize ||
-      getSize(inf.tt_seguidores).label === infFilterSize
-    )
+    // Tamaño según la red de la campaña (TikTok, Instagram o cualquiera de las dos si es "Ambas").
+    // Una red sin seguidores no cuenta: antes, no tener Instagram hacía que el influencer saliera como "Nano".
+    const platCamp = currentCamp?.plataforma || 'Ambas'
+    const redes = [
+      platCamp !== 'Instagram' && Number(inf.tt_seguidores) > 0 ? inf.tt_seguidores : null,
+      platCamp !== 'TikTok' && Number(inf.ig_seguidores) > 0 ? inf.ig_seguidores : null,
+    ].filter(v => v != null)
+    const matchSize = !infFilterSize || redes.some(n => getSize(n).label === infFilterSize)
     return matchSearch && matchTipo && matchSize
   }).sort((a, b) => {
     if (currentCamp?.plataforma === 'Instagram') {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
-import { convertMany, isMobileTikTok } from '../lib/links'
+import { convertMany, isMobileTikTok, sbTokchartCall } from '../lib/links'
 import { calcMetas, prioridadLibre, totalRestante, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
 
 // ───────── fechas (siempre texto YYYY-MM-DD, sin husos horarios) ─────────
@@ -122,8 +122,9 @@ export default function SocialBoost() {
         if (!slot) break
         let cancionId = p.cancion_id
         if (p.mes !== mesSemana) {
-          // Cambió el mes: ficha nueva (el Tokchart es mensual)
-          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, audio_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, '', ${p.audio_url || ''}, ${p.solicitante || ''}) RETURNING id`
+          // Cambió el mes: ficha nueva para contar los videos del mes
+          // (la ficha nueva sigue usando el mismo reporte de Tokchart de la canción)
+          const c = await sql`INSERT INTO sb_canciones (mes, artista, cancion, tokchart_url, audio_url, solicitante) VALUES (${mesSemana}, ${p.artista}, ${p.cancion}, ${p.tokchart_url || ''}, ${p.audio_url || ''}, ${p.solicitante || ''}) RETURNING id`
           cancionId = c[0].id
         }
         const prio = !prioUsadas.has(p.prioridad) && p.prioridad ? p.prioridad : [1, 2, 3, 4, 5].find(x => !prioUsadas.has(x)) || null
@@ -357,8 +358,8 @@ export default function SocialBoost() {
           <input className="input" value={form.cancion} onChange={e => setForm(f => ({ ...f, cancion: e.target.value }))} /></div>
         <div className="fg"><label className="label">Artista</label>
           <input className="input" value={form.artista} onChange={e => setForm(f => ({ ...f, artista: e.target.value }))} /></div>
-        <div className="fg"><label className="label">Link Tokchart (de este mes)</label>
-          <input className="input" value={form.tokchart_url} onChange={e => setForm(f => ({ ...f, tokchart_url: e.target.value }))} placeholder="https://…" /></div>
+        <div className="fg"><label className="label">Link Tokchart (opcional)</label>
+          <input className="input" value={form.tokchart_url} onChange={e => setForm(f => ({ ...f, tokchart_url: e.target.value }))} placeholder="Dejalo vacío: se crea solo al subir el primer video" /></div>
         <div className="fg"><label className="label">Link del audio (para la editora)</label>
           <input className="input" value={form.audio_url} onChange={e => setForm(f => ({ ...f, audio_url: e.target.value }))} placeholder="https://…" /></div>
         <div className="fg"><label className="label">Solicitada por</label>
@@ -403,6 +404,16 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   }, [slot.cancion_id])
   useEffect(() => { cargar() }, [cargar])
 
+  // Envía la lista de videos de la canción a su reporte de Tokchart (lo crea si es nueva)
+  async function enviarATokchart() {
+    const r = await sbTokchartCall(slot.cancion_id)
+    if (r.url) setInfo(i => ({ ...i, tokchart_url: r.url }))
+    if (!r.ok) return `\nTokchart: no se pudo enviar (${r.error}). Los videos quedaron guardados.`
+    if (r.sinLinks) return ''
+    if (r.creado) return `\nTokchart: se creó el reporte "${r.nombre}" con ${r.enviados} video(s).`
+    return `\nTokchart: ${r.enviados} video(s) enviados${r.reutilizado ? ' (mismo reporte de la canción anterior)' : ''}.`
+  }
+
   async function agregar() {
     const lineas = [...new Set(texto.split(/\s+/).map(s => s.trim()).filter(l => /^https?:\/\//i.test(l)))]
     if (!lineas.length) return alert('Pegá al menos un link (uno por línea).')
@@ -428,10 +439,11 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
         if (r.length) nuevos++; else repetidos++
       }
       setModalAdd(false); setTexto('')
+      const tk = nuevos ? await enviarATokchart() : ''
       await cargar(); onChanged()
       alert(`Agregados: ${nuevos}` + (repetidos ? `\nRepetidos (ignorados): ${repetidos}` : '')
         + (sinConvertir ? `\nSin convertir: ${sinConvertir} (usá "Reintentar conversión")` : '')
-        + (sinUsuario ? `\nSin usuario ni cuenta: ${sinUsuario} (elegí la cuenta en la lista)` : ''))
+        + (sinUsuario ? `\nSin usuario ni cuenta: ${sinUsuario} (elegí la cuenta en la lista)` : '') + tk)
     } catch (e) { alert('Error: ' + e.message) }
     setBusy(false)
   }
@@ -448,8 +460,9 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
         const { handle, video_id } = parseVideo(conv[i].url)
         try { await sql`UPDATE sb_videos SET link_web=${conv[i].url}, handle=${handle}, video_id=${video_id} WHERE id=${pend[i].id}`; ok++ } catch (e) { /* duplicado */ }
       }
+      const tk = ok ? await enviarATokchart() : ''
       await cargar(); onChanged()
-      alert(`Convertidos: ${ok} de ${pend.length}`)
+      alert(`Convertidos: ${ok} de ${pend.length}` + tk)
     } catch (e) { alert(e.message) }
     setBusy(false)
   }
@@ -459,7 +472,12 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
   }
   async function borrar(v) {
     if (!confirm('¿Quitar este video?')) return
-    try { await sql`DELETE FROM sb_videos WHERE id = ${v.id}`; await cargar(); onChanged() } catch (e) { alert(e.message) }
+    try {
+      await sql`DELETE FROM sb_videos WHERE id = ${v.id}`
+      await cargar(); onChanged()
+      const tk = await enviarATokchart()
+      if (tk.includes('no se pudo')) alert(tk.trim())
+    } catch (e) { alert(e.message) }
   }
 
   function copiarTodos() {

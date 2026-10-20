@@ -1,37 +1,16 @@
 import pg from 'pg'
 import { createClient } from '@supabase/supabase-js'
 import { isValidTikTokUrl, isTikTokHost, expandTikTok } from './_tiktok.js'
+import { tokchart, TT_REPORT_BASE, IG_REPORT_BASE } from './_tokchartApi.js'
 
 // Conecta ROSTER con la API de Tokchart. El token vive solo en el servidor
 // (variable TOKCHART_API_TOKEN en Vercel) y solo pueden usarlo usuarios con login.
 
-const TOKCHART = 'https://tokchart.com/api/v1'
-const TT_REPORT_BASE = 'https://tokchart.com/campaigns/'
-const IG_REPORT_BASE = 'https://tokchart.com/campaigns/instagram/'
 const MAX_CONVERTIR = 16 // links cortos que se convierten por pulsación (para no pasar el tiempo límite)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const supabaseAuth = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
 const pool = new pg.Pool({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false }, max: 1 })
-
-async function tokchart(path, body) {
-  const r = await fetch(TOKCHART + path, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.TOKCHART_API_TOKEN}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(25000),
-  })
-  const json = await r.json().catch(() => ({}))
-  if (!r.ok) {
-    const detalle = json.errors ? ' ' + JSON.stringify(json.errors) : ''
-    throw Object.assign(new Error((json.message || `Tokchart respondió ${r.status}`) + detalle), { status: r.status })
-  }
-  return json
-}
 
 const esMovilTT = u => isTikTokHost(u) && (/^https?:\/\/(vt|vm|m)\.tiktok\.com\//i.test(u) || /^https?:\/\/(www\.)?tiktok\.com\/t\//i.test(u))
 
@@ -135,7 +114,10 @@ export default async function handler(req, res) {
       const urlActual = tt ? camp.reporte_url_tt : camp.reporte_url_ig
       if (urlActual && !sobrescribir) return res.status(409).json({ error: 'ya_tiene_link', actual: urlActual })
 
-      const nombre = [camp.servicio || camp.tipo, camp.artista, camp.cancion].filter(Boolean).join(' - ') || camp.nombre
+      // Nombre del reporte: "[Servicio] Artista - Canción" (por ejemplo "[Influencer MKT] Aitana - SuperEstrella")
+      const servicio = camp.servicio || camp.tipo
+      const detalle = [camp.artista, camp.cancion].filter(Boolean).join(' - ') || camp.nombre
+      const nombre = servicio ? `[${servicio}] ${detalle}` : detalle
       const body = { name: nombre.slice(0, 255) }
       if (camp.fi) body.start_date = camp.fi
       if (camp.ft) body.end_date = camp.ft

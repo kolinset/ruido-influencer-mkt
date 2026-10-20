@@ -61,17 +61,21 @@ export default function VistaEditor({ token }) {
     if (!lineas.length) return setAviso({ tipo: 'error', txt: 'Pegá al menos un link (uno por línea).' })
     setBusy(true); setAviso(null)
     const tot = { nuevos: 0, repetidos: 0, sinConvertir: 0, sinUsuario: 0, ignorados: 0 }
+    let tokchart = null
     try {
       for (let i = 0; i < lineas.length; i += CHUNK) {
         setProgreso(`Procesando ${Math.min(i + CHUNK, lineas.length)} de ${lineas.length}…`)
         const r = await api({ action: 'add', cancion_id: cancionId, links: lineas.slice(i, i + CHUNK), cuenta_id: cuentaId || null })
         for (const k of Object.keys(tot)) tot[k] += r[k] || 0
+        if (r.tokchart) tokchart = r.tokchart
       }
       const partes = [`${tot.nuevos} agregado${tot.nuevos === 1 ? '' : 's'}`]
       if (tot.repetidos) partes.push(`${tot.repetidos} repetido${tot.repetidos === 1 ? '' : 's'} (ya estaban)`)
       if (tot.sinConvertir) partes.push(`${tot.sinConvertir} no se pudieron convertir`)
       if (tot.sinUsuario) partes.push(`${tot.sinUsuario} sin usuario: elegí la cuenta y volvé a pegarlos`)
       if (tot.ignorados) partes.push(`${tot.ignorados} no eran de TikTok`)
+      if (tokchart && !tokchart.ok) partes.push('no se pudieron enviar a Tokchart (quedaron guardados; avisale a la agencia)')
+      else if (tokchart?.ok && !tokchart.sinLinks) partes.push('enviados a Tokchart')
       setAviso({ tipo: tot.sinConvertir || tot.sinUsuario ? 'warn' : 'ok', txt: partes.join(' · ') })
       setTexto('')
       await cargar()

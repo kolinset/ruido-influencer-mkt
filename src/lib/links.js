@@ -107,3 +107,18 @@ export async function getMetricas(campaignId, forzar = false) {
   if (!res.ok) throw new Error(json.error || 'No se pudieron cargar las métricas')
   return json
 }
+
+// Social Boost → Tokchart: crea o actualiza el reporte de una canción (solo con login)
+export async function sbTokchartCall(cancionId) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch('/api/sb-tokchart', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify({ cancion_id: cancionId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  return res.ok ? json : { ok: false, error: json.error || 'No se pudo enviar a Tokchart' }
+}

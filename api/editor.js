@@ -1,5 +1,8 @@
 import pg from 'pg'
 import { expandTikTok, isTikTokHost, parseVideo } from './_tiktok.js'
+import { sincronizarCancionSB } from './_sbTokchart.js'
+
+export const config = { maxDuration: 30 }
 
 // Endpoint para el link privado de la editora. NO es un acceso general a la base:
 // solo permite ver las canciones de una semana, agregar links de TikTok y borrar
@@ -90,13 +93,21 @@ export default async function handler(req, res) {
           [cancion_id, sem.id, cu, r.u, web, handle, video_id, editor])
         if (ins.rows.length) nuevos++; else repetidos++
       }
-      return res.status(200).json({ nuevos, repetidos, sinConvertir, sinUsuario, ignorados })
+      // Los links nuevos se envían solos al reporte de Tokchart de la canción (si falla, los videos quedan guardados igual)
+      let tokchart = null
+      if (nuevos) {
+        try { tokchart = await sincronizarCancionSB(pool, cancion_id) } catch (e) { tokchart = { ok: false, error: e.message } }
+      }
+      return res.status(200).json({ nuevos, repetidos, sinConvertir, sinUsuario, ignorados, tokchart })
     }
 
     if (action === 'delete') {
       const { video_id } = req.body
       if (!sem || !UUID_RE.test(video_id || '')) return res.status(400).json({ error: 'Video inválido' })
-      const d = await pool.query('DELETE FROM sb_videos WHERE id = $1 AND semana_id = $2 RETURNING id', [video_id, sem.id])
+      const d = await pool.query('DELETE FROM sb_videos WHERE id = $1 AND semana_id = $2 RETURNING id, cancion_id', [video_id, sem.id])
+      if (d.rows.length) {
+        try { await sincronizarCancionSB(pool, d.rows[0].cancion_id) } catch (e) { console.error('editor tokchart:', e.message) }
+      }
       return res.status(200).json({ borrado: d.rows.length })
     }
 
