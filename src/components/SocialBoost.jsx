@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
+import MetricasCampana from './MetricasCampana'
 import { convertMany, isMobileTikTok, sbTokchartCall } from '../lib/links'
 import { calcMetas, prioridadLibre, totalRestante, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
 
@@ -385,7 +386,70 @@ export default function SocialBoost() {
 }
 
 // ═════════════════════════ DESGLOSE DE UNA CANCIÓN ═════════════════════════
+// ───── Qué funcionó mejor: rendimiento por cuenta de los videos de la canción ─────
+// Cruza las métricas de Tokchart (por video) con la cuenta que publicó cada video.
+const fmtN = n => { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : n.toLocaleString('es-CL') }
+
+function AnalisisCuentas({ metricas, videos, cuentas }) {
+  const posts = metricas?.disponible ? (metricas.plataformas.tiktok?.posts || []) : []
+  if (posts.length < 2) return null
+  const porVideo = Object.fromEntries(videos.filter(v => v.video_id).map(v => [v.video_id, v.cuenta_nombre]))
+  const porHandle = Object.fromEntries(cuentas.filter(c => c.handle).map(c => [c.handle.replace('@', '').toLowerCase(), c.nombre]))
+  const grupos = {}
+  for (const p of posts) {
+    const nombre = porVideo[p.video_id] || porHandle[(p.handle || '').toLowerCase()] || (p.handle ? '@' + p.handle : 'Sin cuenta')
+    const g = grupos[nombre] ||= { nombre, videos: 0, views: 0, likes: 0, engs: [], mejor: null }
+    g.videos++; g.views += p.views || 0; g.likes += p.likes || 0
+    if (p.engagement != null) g.engs.push(p.engagement)
+    if (!g.mejor || (p.views || 0) > (g.mejor.views || 0)) g.mejor = p
+  }
+  const lista = Object.values(grupos).map(g => ({ ...g, prom: g.views / g.videos, eng: g.engs.length ? g.engs.reduce((a, b) => a + b, 0) / g.engs.length : null }))
+    .sort((a, b) => b.prom - a.prom)
+  const promCancion = posts.reduce((a, p) => a + (p.views || 0), 0) / posts.length
+  const top = lista[0]
+  const mejorVideo = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
+  const veces = promCancion > 0 ? top.prom / promCancion : 0
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em', marginBottom: 10 }}>Qué funcionó mejor</div>
+      {lista.length > 1 && (
+        <div className="card" style={{ padding: '14px 16px', marginBottom: 10, borderLeft: '3px solid #C4501A', fontSize: 13, lineHeight: 1.5 }}>
+          <b>{top.nombre}</b> es la cuenta con mejor promedio: <b>{fmtN(top.prom)} views por video</b>
+          {veces >= 1.1 ? <> ({veces.toFixed(1).replace('.', ',')}× el promedio de la canción)</> : null}, en {top.videos} video{top.videos === 1 ? '' : 's'}.
+          {' '}El video con más views fue {mejorVideo.handle ? <b>@{mejorVideo.handle}</b> : 'uno'} con <b>{fmtN(mejorVideo.views)}</b>
+          {mejorVideo.link && <> (<a href={mejorVideo.link} target="_blank" rel="noreferrer" style={{ color: '#C4501A' }}>verlo</a>)</>}.
+          <div style={{ fontSize: 11.5, color: '#999', marginTop: 4 }}>Pista para escalar a Clipping: replicar el estilo de la cuenta y del video que más rindieron.</div>
+        </div>
+      )}
+      <div className="card" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+          <thead><tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
+            <th className="th">Cuenta</th><th className="th" style={{ textAlign: 'right' }}>Videos</th><th className="th" style={{ textAlign: 'right' }}>Views</th>
+            <th className="th" style={{ textAlign: 'right' }}>Promedio</th><th className="th" style={{ textAlign: 'right' }}>Engagement</th><th className="th">Mejor video</th>
+          </tr></thead>
+          <tbody>
+            {lista.map((g, i) => (
+              <tr key={g.nombre} style={{ borderBottom: '0.5px solid #F0F0EE' }}>
+                <td className="td" style={{ fontWeight: 500 }}>
+                  {g.nombre}{i === 0 && lista.length > 1 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#fff', background: '#C4501A', borderRadius: 5, padding: '1px 6px' }}>Mejor promedio</span>}
+                </td>
+                <td className="td" style={{ textAlign: 'right' }}>{g.videos}</td>
+                <td className="td" style={{ textAlign: 'right' }}>{fmtN(g.views)}</td>
+                <td className="td" style={{ textAlign: 'right', fontWeight: 600 }}>{fmtN(g.prom)}</td>
+                <td className="td" style={{ textAlign: 'right' }}>{g.eng != null ? g.eng.toFixed(2).replace('.', ',') + '%' : '—'}</td>
+                <td className="td">{g.mejor?.link ? <a href={g.mejor.link} target="_blank" rel="noreferrer" style={{ color: '#C4501A', textDecoration: 'none' }}>{fmtN(g.mejor.views)} views ↗</a> : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
+  const [metricas, setMetricas] = useState(null)
   const [info, setInfo] = useState(slot)
   const [videos, setVideos] = useState([])
   const [modalAdd, setModalAdd] = useState(false)
@@ -397,7 +461,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
 
   const cargar = useCallback(async () => {
     try {
-      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.cuenta_id AS cuenta_manual, cu.id AS cuenta_id, v.created_at, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
+      setVideos(await sql`SELECT v.id, v.link_original, v.link_web, v.handle, v.video_id, v.cuenta_id AS cuenta_manual, cu.id AS cuenta_id, v.created_at, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
         FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
         WHERE v.cancion_id = ${slot.cancion_id} ORDER BY v.created_at DESC, v.id`)
     } catch (e) { console.error(e) }
@@ -533,6 +597,10 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
           <div><div style={{ fontSize: 22, fontWeight: 500 }}>{videos.length}</div><div style={{ fontSize: 11, color: '#999' }}>en el mes</div></div>
         </div>
       </div>
+
+      {/* Métricas del reporte de Tokchart de la canción + qué cuenta rindió mejor */}
+      <MetricasCampana key={slot.cancion_id} cancionId={slot.cancion_id} titulo="Métricas de la canción" admin onData={setMetricas} />
+      <AnalisisCuentas metricas={metricas} videos={videos} cuentas={cuentas} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 500 }}>Videos</div>

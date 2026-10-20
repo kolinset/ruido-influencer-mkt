@@ -31,7 +31,8 @@ function Thumb({ src, size }) {
     style={{ width: size * 0.5625, height: size, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#F2EDE6' }} />
 }
 
-export default function MetricasCampana({ campaignId, admin = false, onData }) {
+// Para una canción de Social Boost se pasa `cancionId` en vez de `campaignId`.
+export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métricas de la campaña', admin = false, onData }) {
   const isMobile = useIsMobile()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -42,12 +43,12 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
 
   const cargar = useCallback(async (forzar = false) => {
     try {
-      const d = await getMetricas(campaignId, forzar)
+      const d = await getMetricas(cancionId || campaignId, forzar, !!cancionId)
       setData(d); setError('')
       onData?.(d)
     } catch (e) { setError(e.message) }
     setLoading(false)
-  }, [campaignId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [campaignId, cancionId]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setLoading(true); setData(null); cargar() }, [cargar])
 
   async function actualizarAhora() {
@@ -71,7 +72,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
     if (!admin) return null
     return (
       <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, padding: '14px 18px', marginBottom: 16, fontSize: 12.5, color: avisoErrores ? '#633806' : '#888' }}>
-        {error ? `No se pudieron cargar las métricas: ${error}` : avisoErrores || 'Las métricas aparecen solas cuando la campaña tiene su reporte de Tokchart.'}
+        {error ? `No se pudieron cargar las métricas: ${error}` : avisoErrores || (cancionId ? 'Las métricas aparecen solas cuando la canción tiene su reporte de Tokchart (se crea al subir el primer video).' : 'Las métricas aparecen solas cuando la campaña tiene su reporte de Tokchart.')}
       </div>
     )
   }
@@ -101,7 +102,7 @@ export default function MetricasCampana({ campaignId, admin = false, onData }) {
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>Métricas de la campaña{vista !== 'total' ? ` · ${vista === 'tiktok' ? 'TikTok' : 'Instagram'}` : ''}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>{titulo}{vista !== 'total' ? ` · ${vista === 'tiktok' ? 'TikTok' : 'Instagram'}` : ''}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: '#AAA' }}>
           <span>Actualizado {haceCuanto(data.actualizado)}</span>
           {admin && <button className="btn-ghost" style={{ fontSize: 11.5, padding: '5px 12px' }} onClick={actualizarAhora} disabled={actualizando}>{actualizando ? 'Actualizando…' : '↻ Actualizar ahora'}</button>}

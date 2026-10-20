@@ -101,7 +101,8 @@ export async function tokchartCall(body) {
 }
 
 // ───── Métricas leídas de Tokchart (vía /api/metricas; funciona con o sin login) ─────
-export async function getMetricas(campaignId, forzar = false) {
+// `cancion = true` para canciones de Social Boost
+export async function getMetricas(id, forzar = false, cancion = false) {
   const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch('/api/metricas', {
     method: 'POST',
@@ -109,7 +110,7 @@ export async function getMetricas(campaignId, forzar = false) {
       'Content-Type': 'application/json',
       ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
     },
-    body: JSON.stringify({ campaign_id: campaignId, forzar }),
+    body: JSON.stringify({ ...(cancion ? { cancion_id: id } : { campaign_id: id }), forzar }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'No se pudieron cargar las métricas')

@@ -27,16 +27,25 @@ async function esAdmin(req) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
-  const { campaign_id, forzar } = req.body || {}
-  if (!UUID_RE.test(campaign_id || '')) return res.status(400).json({ error: 'Campaña inválida' })
+  const { campaign_id, cancion_id, forzar } = req.body || {}
+  // Sirve para campañas (campaign_id) y para canciones de Social Boost (cancion_id)
+  const esCancion = !!cancion_id
+  const id = esCancion ? cancion_id : campaign_id
+  if (!UUID_RE.test(id || '')) return res.status(400).json({ error: esCancion ? 'Canción inválida' : 'Campaña inválida' })
+  // Nombres fijos de tabla y columna (no vienen del usuario)
+  const tabla = esCancion ? 'sb_metricas' : 'campaign_metrics'
+  const col = esCancion ? 'cancion_id' : 'campaign_id'
 
   try {
-    const camp = (await pool.query('SELECT id, reporte_url_tt, reporte_url_ig, views_logradas FROM campaigns WHERE id = $1', [campaign_id])).rows[0]
-    if (!camp) return res.status(404).json({ error: 'Campaña no encontrada' })
+    const camp = esCancion
+      ? (await pool.query("SELECT id, tokchart_url AS reporte_url_tt, '' AS reporte_url_ig FROM sb_canciones WHERE id = $1", [id])).rows[0]
+      : (await pool.query('SELECT id, reporte_url_tt, reporte_url_ig, views_logradas FROM campaigns WHERE id = $1', [id])).rows[0]
+    if (!camp) return res.status(404).json({ error: esCancion ? 'Canción no encontrada' : 'Campaña no encontrada' })
+    const campaign_id = id
 
     // "Actualizar ahora" desde Roster: solo con sesión, y como mínimo 1 minuto entre lecturas
     const forzado = forzar ? await esAdmin(req) : false
-    const guardadas = Object.fromEntries((await pool.query('SELECT * FROM campaign_metrics WHERE campaign_id = $1', [campaign_id])).rows.map(r => [r.plataforma, r]))
+    const guardadas = Object.fromEntries((await pool.query(`SELECT * FROM ${tabla} WHERE ${col} = $1`, [campaign_id])).rows.map(r => [r.plataforma, r]))
 
     const fuentes = [['tiktok', camp.reporte_url_tt], ['instagram', camp.reporte_url_ig]].filter(([, url]) => isTokchartReportUrl((url || '').trim()))
     const out = {}
@@ -48,9 +57,9 @@ export default async function handler(req, res) {
         try {
           const r = await fetchReport(url.trim())
           fila = (await pool.query(`
-            INSERT INTO campaign_metrics (campaign_id, plataforma, views, likes, comments, saves, shares, engagement, posts, fetched_at, intento_at, error)
+            INSERT INTO ${tabla} (${col}, plataforma, views, likes, comments, saves, shares, engagement, posts, fetched_at, intento_at, error)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now(), '')
-            ON CONFLICT (campaign_id, plataforma) DO UPDATE SET views = EXCLUDED.views, likes = EXCLUDED.likes, comments = EXCLUDED.comments,
+            ON CONFLICT (${col}, plataforma) DO UPDATE SET views = EXCLUDED.views, likes = EXCLUDED.likes, comments = EXCLUDED.comments,
               saves = EXCLUDED.saves, shares = EXCLUDED.shares, engagement = EXCLUDED.engagement, posts = EXCLUDED.posts,
               fetched_at = now(), intento_at = now(), error = ''
             RETURNING *`,
@@ -59,8 +68,8 @@ export default async function handler(req, res) {
           // Si Tokchart falla o cambió su página, se guardan los datos anteriores tal cual y solo se anota el error
           console.error('metricas tokchart', plat, e.message)
           fila = (await pool.query(`
-            INSERT INTO campaign_metrics (campaign_id, plataforma, intento_at, error) VALUES ($1, $2, now(), $3)
-            ON CONFLICT (campaign_id, plataforma) DO UPDATE SET intento_at = now(), error = EXCLUDED.error
+            INSERT INTO ${tabla} (${col}, plataforma, intento_at, error) VALUES ($1, $2, now(), $3)
+            ON CONFLICT (${col}, plataforma) DO UPDATE SET intento_at = now(), error = EXCLUDED.error
             RETURNING *`, [campaign_id, plat, String(e.message).slice(0, 300)])).rows[0]
         }
       }
@@ -81,7 +90,7 @@ export default async function handler(req, res) {
     const total = { views: suma('views'), likes: suma('likes'), comments: suma('comments'), saves: suma('saves'), shares: suma('shares') }
 
     // "Views logradas" de la campaña se mantiene al día con Tokchart
-    if (total.views > 0 && Number(camp.views_logradas) !== total.views) {
+    if (!esCancion && total.views > 0 && Number(camp.views_logradas) !== total.views) {
       await pool.query('UPDATE campaigns SET views_logradas = $1 WHERE id = $2', [total.views, campaign_id])
     }
 

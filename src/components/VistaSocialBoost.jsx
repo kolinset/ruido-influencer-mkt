@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { publicSql } from '../lib/db'
 import { calcMetas, totalRestante } from '../lib/sbMetas'
+import MetricasCampana from './MetricasCampana'
 
 // Vista de solo lectura de Social Boost para el portal del cliente.
 
@@ -79,6 +80,8 @@ export default function VistaSocialBoost({ isMobile }) {
             <div><div style={{ fontSize: 22, fontWeight: 500 }}>{abierta.vids_mes}</div><div style={{ fontSize: 11, color: '#999' }}>en el mes</div></div>
           </div>
         </div>
+
+        <MetricasCampana key={abierta.cancion_id} cancionId={abierta.cancion_id} titulo="Métricas de la canción" />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 500 }}>Videos</div>
