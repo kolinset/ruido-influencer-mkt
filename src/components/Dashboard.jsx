@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import sql from '../lib/db'
+import supabase from '../lib/supabaseClient'
 import { resumenDiario } from '../lib/links'
 
 const RETENCION_HONORARIOS = 0.1525
@@ -100,61 +100,12 @@ export default function Dashboard({ onNavigate }) {
   async function fetchDashboard() {
     setLoading(true)
     try {
-      const [infRows, campRows, ciRows, pagoRows] = await Promise.all([
-        sql`
-          SELECT id, nombre, ig_seguidores, tt_seguidores, tipos_contenido, estado
-          FROM influencers
-          ORDER BY tt_seguidores DESC
-        `,
-        sql`SELECT * FROM campaigns ORDER BY created_at DESC`,
-        sql`SELECT campaign_id, influencer_id, costo, tipo_facturacion FROM campaign_influencers`,
-        sql`
-          SELECT
-            i.id AS influencer_id,
-            i.nombre,
-            json_agg(json_build_object(
-              'costo', ci.costo,
-              'tipo_facturacion', ci.tipo_facturacion
-            )) AS pagos_raw
-          FROM influencers i
-          JOIN campaign_influencers ci ON ci.influencer_id = i.id
-          JOIN campaigns c ON c.id = ci.campaign_id
-          WHERE ci.estado_pago != 'Pagado'
-            AND ci.costo > 0
-            AND c.estado IN ('Activa', 'Cerrada')
-          GROUP BY i.id, i.nombre
-        `,
-      ])
-
-      const now = new Date()
-      const mesActual = now.getMonth()
-      const anioActual = now.getFullYear()
-
-      const campsConDatos = campRows.map(c => {
-        const infs = ciRows.filter(ci => ci.campaign_id === c.id)
-        const usado = infs.reduce((s, i) => s + calcCosto(i.costo, i.tipo_facturacion), 0)
-        const creado = new Date(c.created_at)
-        const esMes = creado.getMonth() === mesActual && creado.getFullYear() === anioActual
-        return { ...c, usado, esMes }
-      })
-
-      const pagosPendientes = pagoRows.map(r => {
-        const pagos = r.pagos_raw || []
-        const total = pagos.reduce((s, p) => s + calcCosto(p.costo, p.tipo_facturacion), 0)
-        return { ...r, total_pendiente: total }
-      }).filter(r => r.total_pendiente > 0)
-
-      const totalPendiente = pagosPendientes.reduce((s, p) => s + p.total_pendiente, 0)
-
-      setData({
-        influencers: infRows,
-        campaigns: campsConDatos,
-        totalSegTT: infRows.reduce((s, i) => s + Number(i.tt_seguidores), 0),
-        activos: infRows.filter(i => i.estado === 'Activo').length,
-        pagosPendientes,
-        totalPendiente,
-        countPendientes: pagosPendientes.length,
-      })
+      // Un solo pedido con las cuentas ya hechas en el servidor (antes eran 4 pedidos grandes)
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/dashboard', { headers: session ? { Authorization: `Bearer ${session.access_token}` } : {} })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'No se pudo cargar el dashboard')
+      setData(json)
     } catch (e) { console.error(e) }
     setLoading(false)
   }
@@ -162,8 +113,8 @@ export default function Dashboard({ onNavigate }) {
   if (loading) return <div style={{ padding: 40, color: '#AAA', fontSize: 13 }}>Cargando...</div>
   if (!data) return null
 
-  const campsMes = data.campaigns.filter(c => c.esMes)
-  const topInfs = data.influencers.slice(0, 8)
+  const campsMes = data.campsMes
+  const topInfs = data.topInfs
   const mesNombre = new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
 
   return (
@@ -196,10 +147,10 @@ export default function Dashboard({ onNavigate }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KPI label="Influencers en roster" value={data.influencers.length} sub={`${data.activos} activos`} subColor="#3B6D11" />
-        <KPI label="Campañas totales" value={data.campaigns.length} sub={`${campsMes.length} este mes`} subColor="#0C447C" />
+        <KPI label="Influencers en roster" value={data.totalInfluencers} sub={`${data.activos} activos`} subColor="#3B6D11" />
+        <KPI label="Campañas totales" value={data.totalCampanas} sub={`${campsMes.length} este mes`} subColor="#0C447C" />
         <KPI label="Alcance TikTok roster" value={fmtSeg(data.totalSegTT)} sub="seguidores TikTok acumulados" />
-        <KPI label="Presupuesto administrado" value={fmtMoney(data.campaigns.reduce((s, c) => s + Number(c.budget), 0), 'CLP')} sub="en todas las campañas" />
+        <KPI label="Presupuesto administrado" value={fmtMoney(data.budgetTotal, 'CLP')} sub="en todas las campañas" />
       </div>
 
       {/* Tarjeta pagos pendientes */}

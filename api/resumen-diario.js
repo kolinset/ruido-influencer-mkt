@@ -87,7 +87,9 @@ async function armarResumen() {
     WHERE c.estado = 'Activa' ORDER BY c.created_at DESC`)).rows
   const ids = camps.map(c => c.id)
   const cis = ids.length ? (await pool.query(`
-    SELECT campaign_id, costo, tipo_facturacion, video_link_tt, video_link_ig FROM campaign_influencers WHERE campaign_id = ANY($1::uuid[])`, [ids])).rows : []
+    SELECT ci.campaign_id, ci.costo, ci.tipo_facturacion, ci.video_link_tt, ci.video_link_ig, ci.estado, i.nombre
+    FROM campaign_influencers ci LEFT JOIN influencers i ON i.id = ci.influencer_id
+    WHERE ci.campaign_id = ANY($1::uuid[])`, [ids])).rows : []
   const playlists = ids.length ? Object.fromEntries((await pool.query(`
     SELECT campaign_id, count(*)::int AS n FROM campaign_playlists WHERE campaign_id = ANY($1::uuid[]) GROUP BY 1`, [ids])).rows.map(r => [r.campaign_id, r.n])) : {}
   const metricas = await mapLimit(camps, 4, c => (c.tipo === 'Playlisting' ? null : obtenerMetricas(pool, { campaign_id: c.id }, { frescoMin: 60 }).catch(() => null)))
@@ -148,7 +150,19 @@ async function armarResumen() {
       }
     }
     if (m?.errores && Object.keys(m.errores).length) alertas.push('no se pudo leer su reporte de Tokchart')
-    return { nombre: c.nombre, cliente: c.cliente, tipo: c.tipo, datos, alertas }
+    const publicadosN = infs.filter(x => (x.video_link_tt || '').trim() || (x.video_link_ig || '').trim()).length
+    const pendientes = infs.filter(x => !(x.video_link_tt || '').trim() && !(x.video_link_ig || '').trim() && !['Contactado', 'Negociando'].includes(x.estado)).map(x => x.nombre).filter(Boolean)
+    const posts = m?.disponible ? Object.values(m.plataformas).flatMap(p => p.posts || []) : []
+    const pctUtil = Number(c.utilizable_pct) || 100
+    const utilizable = c.es_legacy ? Number(c.budget) || 0 : Math.round((Number(c.budget_total) || 0) * pctUtil / 100)
+    const usado = infs.reduce((a, x) => a + calcCosto(x.costo, x.tipo_facturacion), 0)
+    const texto = analizarCampana({
+      tipo: c.tipo, views, dViews, tieneAyer: ayer['campana:' + c.id] != null, posts, pendientes,
+      publicados: publicadosN, total: infs.length, pctUsado: utilizable > 0 ? Math.round(usado / utilizable * 100) : null,
+      meta: Number(c.views_max) || 0, contenidos: Number(c.contenidos_count) || 0, playlists: playlists[c.id] || 0,
+      engagement: m?.engagement, sinLeer: !!(m?.errores && Object.keys(m.errores).length),
+    })
+    return { nombre: c.nombre, cliente: c.cliente, tipo: c.tipo, datos, alertas, texto, views, dViews, viral: texto.viral, pendientes: pendientes.length }
   })
 
   const canciones = slots
@@ -167,10 +181,111 @@ async function armarResumen() {
           ['Views', views != null ? fmt(views) + delta(dViews) : '<span style="color:#A19890">sin reporte todavía</span>'],
         ],
         falta: Math.max(0, meta - s.vids_sem),
+        texto: analizarCancion({ vidsSem: s.vids_sem, meta, vidsMes: s.vids_mes, views, dViews, tieneAyer: ayer['cancion:' + s.cancion_id] != null, posts: m?.disponible ? (m.plataformas.tiktok?.posts || []) : [] }),
+        views, dViews,
       }
     })
 
-  return { fecha, campanas, sb: { inicio, canciones, vidsMes, vidsSem, maxMes: MAX_MES_SB, totalSemana: TOTAL_SEMANA } }
+  const sb = { inicio, canciones, vidsMes, vidsSem, maxMes: MAX_MES_SB, totalSemana: TOTAL_SEMANA }
+  return { fecha, campanas, sb, intro: introDelDia(campanas, sb) }
+}
+
+// ───── Análisis en palabras (para leer rápido desde el teléfono) ─────
+const lista = nombres => nombres.length <= 1 ? (nombres[0] || '') : nombres.length <= 4
+  ? nombres.slice(0, -1).join(', ') + ' y ' + nombres.at(-1)
+  : nombres.slice(0, 3).join(', ') + ` y ${nombres.length - 3} más`
+
+// Un video "se fue viral" si tiene 100K+ views y al menos 3 veces el promedio de los otros, o 500K+ views
+function buscarViral(posts) {
+  const ord = [...posts].filter(p => p.views).sort((a, b) => b.views - a.views)
+  if (!ord.length) return null
+  const top = ord[0]
+  const resto = ord.slice(1)
+  const promResto = resto.length ? resto.reduce((a, p) => a + p.views, 0) / resto.length : 0
+  if (top.views >= 500000 || (top.views >= 100000 && (!resto.length || top.views >= 3 * promResto))) return top
+  return null
+}
+const quien = p => p?.handle ? '@' + p.handle : 'un video'
+
+function analizarCampana(d) {
+  const frases = []
+  const viral = buscarViral(d.posts)
+  if (d.tipo === 'Playlisting') {
+    return { html: esc(`Tiene ${d.playlists} playlist${d.playlists === 1 ? '' : 's'} cargada${d.playlists === 1 ? '' : 's'}.`), viral: null }
+  }
+  // Cómo va
+  if (d.views == null) {
+    frases.push(d.sinLeer ? 'No pude leer su reporte de Tokchart hoy, así que no tengo las views.' : 'Todavía no tiene reporte de Tokchart, así que no hay views para mostrar.')
+  } else if (d.tipo === 'Clipping' && d.meta) {
+    const pct = Math.round(d.views / d.meta * 100)
+    if (pct >= 100) frases.push(`¡Ya cumplimos la meta! Va en <b>${fmt(d.views)} views</b>, el ${pct}% de los ${fmt(d.meta)} prometidos 🎉`)
+    else {
+      frases.push(`Va en <b>${fmt(d.views)} views</b>, el ${pct}% de la meta de ${fmt(d.meta)}${d.dViews > 0 ? ` (+${fmt(d.dViews)} desde ayer)` : ''}.`)
+      if (d.dViews > 0) {
+        const dias = Math.ceil((d.meta - d.views) / d.dViews)
+        frases.push(dias <= 60 ? `A este ritmo llegaría a la meta en unos ${dias} día${dias === 1 ? '' : 's'}.` : 'A este ritmo todavía le falta harto para la meta.')
+      } else if (d.tieneAyer) frases.push('Ayer no sumó views, ojo con el ritmo.')
+    }
+  } else {
+    const creciendo = d.dViews > 0 && d.views - d.dViews > 0 && d.dViews / (d.views - d.dViews) >= 0.2
+    if (creciendo) frases.push(`Viene creciendo fuerte: suma <b>${fmt(d.views)} views</b> (+${fmt(d.dViews)} desde ayer).`)
+    else if (d.dViews > 0) frases.push(`Va bien, suma <b>${fmt(d.views)} views</b> (+${fmt(d.dViews)} desde ayer).`)
+    else if (d.tieneAyer) frases.push(`Lleva <b>${fmt(d.views)} views</b>; desde ayer casi no se movió.`)
+    else frases.push(`Lleva <b>${fmt(d.views)} views</b> en total.`)
+  }
+  // Lo más destacado
+  if (viral) frases.push(`¡Tuvimos un video que se fue viral! ${esc(quien(viral))} ya va en <b>${fmt(viral.views)} views</b> 🔥`)
+  else if (d.posts.length >= 2) {
+    const top = [...d.posts].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
+    if (top?.views) frases.push(`El que mejor va es ${esc(quien(top))} con ${fmt(top.views)} views.`)
+  }
+  // Qué falta
+  if (d.tipo !== 'Clipping' && d.tipo !== 'Nano Blast' && d.total > 0) {
+    if (d.pendientes.length) frases.push(`Falta que suban su contenido: <b>${esc(lista(d.pendientes))}</b>.`)
+    else if (d.publicados === d.total) frases.push('Todas las creadoras ya publicaron ✓')
+  }
+  if (d.tipo === 'Nano Blast' && d.contenidos) frases.push(`Lleva ${fmt(d.contenidos)} contenidos publicados.`)
+  if (d.pctUsado != null && d.pctUsado > 100) frases.push(`Ojo: el presupuesto ya se pasó (${d.pctUsado}%).`)
+  else if (d.pctUsado != null && d.pctUsado >= 90 && d.tipo !== 'Clipping' && d.tipo !== 'Nano Blast') frases.push(`El presupuesto está casi completo (${d.pctUsado}%).`)
+  return { html: frases.join(' '), viral }
+}
+
+function analizarCancion(d) {
+  const frases = []
+  if (d.meta > 0 && d.vidsSem >= d.meta) frases.push(`¡Ya cumplió la meta de la semana! Lleva <b>${d.vidsSem} videos</b>.`)
+  else if (d.meta > 0) frases.push(`Lleva <b>${d.vidsSem} de ${d.meta} videos</b> esta semana; faltan ${d.meta - d.vidsSem}.`)
+  else frases.push(`Lleva ${d.vidsSem} videos esta semana.`)
+  if (d.views != null) frases.push(`Suma ${fmt(d.views)} views${d.dViews > 0 ? ` (+${fmt(d.dViews)} desde ayer)` : ''}.`)
+  const viral = buscarViral(d.posts)
+  if (viral) frases.push(`¡Un video se fue viral! ${esc(quien(viral))} va en <b>${fmt(viral.views)} views</b> 🔥`)
+  else if (d.posts.length >= 2) {
+    const top = [...d.posts].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
+    if (top?.views) frases.push(`El mejor video es de ${esc(quien(top))} con ${fmt(top.views)} views.`)
+  }
+  return { html: frases.join(' '), viral }
+}
+
+function introDelDia(campanas, sb) {
+  const frases = []
+  const conViews = campanas.filter(c => c.views != null)
+  const total = conViews.reduce((a, c) => a + c.views, 0)
+  const dTotal = conViews.reduce((a, c) => a + (c.dViews > 0 ? c.dViews : 0), 0)
+  if (!campanas.length) frases.push('Hoy no hay campañas activas.')
+  else frases.push(`Hoy tienes <b>${campanas.length} campaña${campanas.length === 1 ? '' : 's'} activa${campanas.length === 1 ? '' : 's'}</b>${conViews.length ? ` que suman <b>${fmt(total)} views</b>${dTotal > 0 ? ` (+${fmt(dTotal)} desde ayer)` : ''}` : ''}.`)
+  const virales = [...campanas.filter(c => c.viral).map(c => c.nombre), ...sb.canciones.filter(s => s.texto.viral).map(s => s.nombre)]
+  if (virales.length) frases.push(`🔥 Hay ${virales.length === 1 ? 'un video viral' : virales.length + ' videos virales'} en ${esc(lista(virales))}.`)
+  const mejor = [...conViews].filter(c => c.dViews > 0).sort((a, b) => b.dViews - a.dViews)[0]
+  if (mejor) frases.push(`La que más creció fue <b>${esc(mejor.nombre)}</b> (+${fmt(mejor.dViews)}).`)
+  const conPendientes = campanas.filter(c => c.pendientes > 0)
+  if (conPendientes.length) {
+    const n = conPendientes.reduce((a, c) => a + c.pendientes, 0)
+    frases.push(`Para hoy: faltan <b>${n} creador${n === 1 ? '' : 'es'}</b> por publicar en ${conPendientes.length} campaña${conPendientes.length === 1 ? '' : 's'}.`)
+  }
+  if (sb.canciones.length) {
+    const atrasadas = sb.canciones.filter(s => s.falta > 0).length
+    frases.push(`En Social Boost van <b>${sb.vidsSem} de ${sb.totalSemana} videos</b> de la semana${atrasadas ? ` y ${atrasadas} canci${atrasadas === 1 ? 'ón' : 'ones'} todavía no llega${atrasadas === 1 ? '' : 'n'} a su meta` : ', todas con su meta cumplida ✓'}.`)
+  }
+  return frases.join(' ')
 }
 
 // ───── Mail ─────
@@ -180,6 +295,11 @@ function fechaLarga(ymd) {
 }
 
 function htmlResumen(r, appUrl) {
+  const parrafo = (titulo, sub, texto) => `
+    <tr><td style="padding:0 0 12px">
+      <div style="font-size:15px;font-weight:600;color:#0E0F12">${esc(titulo)}<span style="font-size:12px;font-weight:400;color:#A19890"> · ${esc(sub)}</span></div>
+      <div style="font-size:14.5px;line-height:1.55;color:#3A3330;margin-top:3px">${texto}</div>
+    </td></tr>`
   const tarjeta = (titulo, sub, datos, extra = '') => `
     <tr><td style="padding:0 0 10px">
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #EFE8DF;border-radius:14px">
@@ -218,10 +338,24 @@ function htmlResumen(r, appUrl) {
         <div style="font-size:13px;color:#A19890;margin-top:2px">${fechaLarga(r.fecha).replace(/^./, c => c.toUpperCase())}</div>
       </td></tr>
 
-      <tr><td style="padding:6px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C4501A">Campañas activas · ${r.campanas.length}</td></tr>
+      <tr><td style="padding:0 0 18px">
+        <div style="background:#0E0F12;border-radius:16px;padding:18px 18px;color:#F4E6D6;font-size:15px;line-height:1.55">
+          <div style="font-size:13px;color:#E58A3E;font-weight:600;margin-bottom:6px">Buenos días ☀️</div>
+          ${r.intro}
+        </div>
+      </td></tr>
+
+      <tr><td style="padding:6px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C4501A">Cómo van las campañas</td></tr>
+      ${r.campanas.length ? r.campanas.map(c => parrafo(c.nombre, [c.cliente, c.tipo].filter(Boolean).join(' · '), c.texto.html)).join('') : `<tr><td style="padding:0 0 10px;color:#A19890;font-size:13px">No hay campañas activas.</td></tr>`}
+
+      ${r.sb.canciones.length ? `<tr><td style="padding:14px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C4501A">Social Boost</td></tr>
+      ${r.sb.canciones.map(s => parrafo(s.nombre, s.artista || '', s.texto.html)).join('')}` : ''}
+
+      <tr><td style="padding:22px 0 8px"><div style="border-top:1px solid #E8DFD4"></div></td></tr>
+      <tr><td style="padding:6px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A19890">El detalle · campañas activas (${r.campanas.length})</td></tr>
       ${campanas}
 
-      <tr><td style="padding:16px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C4501A">Social Boost · esta semana</td></tr>
+      <tr><td style="padding:16px 0 10px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A19890">El detalle · Social Boost de la semana</td></tr>
       <tr><td style="padding:0 0 10px;font-size:13px;color:#625A54">${r.sb.vidsSem} de ${r.sb.totalSemana} videos esta semana · ${r.sb.vidsMes} de ${r.sb.maxMes} en el mes</td></tr>
       ${sb}
 
