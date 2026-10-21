@@ -131,3 +131,19 @@ export async function sbTokchartCall(cancionId) {
   const json = await res.json().catch(() => ({}))
   return res.ok ? json : { ok: false, error: json.error || 'No se pudo enviar a Tokchart' }
 }
+
+// Resumen diario por mail: `ver` lo abre en una pestaña; si no, lo envía ahora (solo con login)
+export async function resumenDiario(ver) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(`/api/resumen-diario?${ver ? 'preview' : 'enviar'}=1`, {
+    headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+  })
+  if (ver) {
+    const html = await res.text()
+    if (!res.ok) throw new Error((() => { try { return JSON.parse(html).error } catch { return 'No se pudo armar el resumen' } })())
+    return html
+  }
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'No se pudo enviar')
+  return json
+}

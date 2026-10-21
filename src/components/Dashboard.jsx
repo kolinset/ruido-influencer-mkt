@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import sql from '../lib/db'
+import { resumenDiario } from '../lib/links'
 
 const RETENCION_HONORARIOS = 0.1525
 const IVA = 0.19
@@ -92,6 +93,7 @@ function BudgetBar({ usado, total, moneda }) {
 export default function Dashboard({ onNavigate }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [resumenBusy, setResumenBusy] = useState('')
 
   useEffect(() => { fetchDashboard() }, [])
 
@@ -167,11 +169,30 @@ export default function Dashboard({ onNavigate }) {
   return (
     <div className="page-pad">
 
-      <div style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500 }}>Dashboard</h1>
-        <p style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>
-          {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
+      <div style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 500 }}>Dashboard</h1>
+          <p style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>
+            {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        {/* Resumen diario por mail: se envía solo cada mañana; acá se puede ver o enviar al momento */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn-ghost" style={{ fontSize: 12 }} disabled={!!resumenBusy} onClick={async () => {
+            const w = window.open('', '_blank')
+            setResumenBusy('ver')
+            try { const html = await resumenDiario(true); w.document.open(); w.document.write(html); w.document.close() }
+            catch (e) { w?.close(); alert(e.message) }
+            setResumenBusy('')
+          }}>{resumenBusy === 'ver' ? 'Armando…' : '✉ Ver resumen de hoy'}</button>
+          <button className="btn-ghost" style={{ fontSize: 12 }} disabled={!!resumenBusy} onClick={async () => {
+            if (!confirm('¿Enviar ahora el resumen por mail?')) return
+            setResumenBusy('enviar')
+            try { const r = await resumenDiario(false); alert(`Resumen enviado a ${r.enviadoA.join(', ')}`) }
+            catch (e) { alert('No se pudo enviar: ' + e.message) }
+            setResumenBusy('')
+          }}>{resumenBusy === 'enviar' ? 'Enviando…' : 'Enviar ahora'}</button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
