@@ -19,6 +19,20 @@ const pool = new pg.Pool({
   max: 1, // funciones serverless: una conexión corta por invocación
 })
 
+// Sesiones ya verificadas (por unos minutos): así no se consulta a Supabase en CADA consulta,
+// que era lo que más tiempo sumaba al abrir una pantalla con varias consultas.
+const SESION_OK_MS = 2 * 60 * 1000
+const sesiones = new Map() // token → vence (ms)
+async function sesionValida(token) {
+  const vence = sesiones.get(token)
+  if (vence && vence > Date.now()) return true
+  const { data, error } = await supabaseAuth.auth.getUser(token)
+  if (error || !data?.user) { sesiones.delete(token); return false }
+  if (sesiones.size > 500) sesiones.clear()
+  sesiones.set(token, Date.now() + SESION_OK_MS)
+  return true
+}
+
 function hasMultipleStatements(text) {
   // Bloquea intentos de "apilar" varias sentencias en una sola consulta
   const withoutStrings = text.replace(/\$\$[\s\S]*?\$\$|'[^']*'/g, '')
@@ -52,8 +66,7 @@ export default async function handler(req, res) {
     if (!token) {
       return res.status(401).json({ error: 'No autorizado. Iniciá sesión de nuevo.' })
     }
-    const { data, error } = await supabaseAuth.auth.getUser(token)
-    if (error || !data?.user) {
+    if (!(await sesionValida(token))) {
       return res.status(401).json({ error: 'Sesión inválida o expirada. Iniciá sesión de nuevo.' })
     }
     sqlText = text

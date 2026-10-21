@@ -4,6 +4,11 @@ import './index.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
+// Computadores modestos (4 núcleos o menos, o poca memoria): versión sin desenfoques para que vaya fluida
+if ((navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4) {
+  document.documentElement.classList.add('lite')
+}
+
 // Sin estas variables la app no puede conectarse a Supabase y quedaría en blanco.
 // (Pasa típicamente en las vistas previas de Vercel si las variables solo están en "Production".)
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {

@@ -68,19 +68,29 @@ export default function SocialBoost() {
 
   const cargar = useCallback(async () => {
     try {
-      const cu = await sql`SELECT id, nombre, handle, notas, activa FROM sb_cuentas ORDER BY nombre`
+      // Las consultas que no dependen entre sí se piden en paralelo (antes iban una por una)
+      const [cu, semR, prevR, kMes, ult] = await Promise.all([
+        sql`SELECT id, nombre, handle, notas, activa FROM sb_cuentas ORDER BY nombre`,
+        sql`SELECT id, inicio::text AS inicio, mes::text AS mes, sin_prioridad FROM sb_semanas WHERE inicio = ${inicio}`,
+        sql`SELECT id FROM sb_semanas WHERE inicio = ${prevInicio}`,
+        sql`SELECT count(*)::int AS n FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id WHERE c.mes = ${mesSemana}`,
+        sql`SELECT v.id, v.link_web, v.link_original, v.handle, v.created_at, c.id AS cancion_id, c.cancion, cu.nombre AS cuenta_nombre
+          FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
+          ORDER BY v.created_at DESC LIMIT 40`,
+      ])
+      const sem = semR[0] || null
+      const prev = prevR[0]
+      const [slotsR, prevSlotsR, kSem] = await Promise.all([
+        sem ? SLOT_SQL(sem.id) : [],
+        prev ? SLOT_SQL(prev.id) : [],
+        sem ? sql`SELECT count(*)::int AS n FROM sb_videos WHERE semana_id = ${sem.id}` : [{ n: 0 }],
+      ])
       setCuentas(cu)
-      const sem = (await sql`SELECT id, inicio::text AS inicio, mes::text AS mes, sin_prioridad FROM sb_semanas WHERE inicio = ${inicio}`)[0] || null
       setSemana(sem)
-      setSlots(sem ? await SLOT_SQL(sem.id) : [])
-      const prev = (await sql`SELECT id FROM sb_semanas WHERE inicio = ${prevInicio}`)[0]
-      setPrevSlots(prev ? await SLOT_SQL(prev.id) : [])
-      const kMes = await sql`SELECT count(*)::int AS n FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id WHERE c.mes = ${mesSemana}`
-      const kSem = sem ? await sql`SELECT count(*)::int AS n FROM sb_videos WHERE semana_id = ${sem.id}` : [{ n: 0 }]
+      setSlots(slotsR)
+      setPrevSlots(prevSlotsR)
       setKpi({ mes: kMes[0].n, semana: kSem[0].n })
-      setUltimos(await sql`SELECT v.id, v.link_web, v.link_original, v.handle, v.created_at, c.id AS cancion_id, c.cancion, cu.nombre AS cuenta_nombre
-        FROM sb_videos v JOIN sb_canciones c ON c.id = v.cancion_id LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
-        ORDER BY v.created_at DESC LIMIT 40`)
+      setUltimos(ult)
     } catch (e) { console.error(e); alert('Error cargando Social Boost: ' + e.message) }
     setLoading(false)
   }, [inicio])

@@ -40,7 +40,7 @@
   --ink-soft: #625A54;
   --ink-faint: #A19890;
 
-  --glass: rgba(255, 255, 255, 0.72);
+  --glass: rgba(255, 255, 255, 0.84);
   --glass-strong: rgba(255, 255, 255, 0.92);
   --glass-soft: rgba(250, 247, 242, 0.75);
   --glass-border: rgba(255, 255, 255, 0.95);
@@ -64,23 +64,17 @@ body {
 
 /* ── Fondo ambiental: luces difuminadas (solo dentro de la plataforma) ── */
 .ambient {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; contain: strict;
   background: linear-gradient(180deg, #FFFEFB 0%, #FAF7F2 55%, #F5F0E8 100%);
 }
 .ambient span {
   position: absolute; border-radius: 50%;
-  animation: drift 30s ease-in-out infinite alternate;
 }
 /* Detalles en naranjo: líneas finas de luz sobre el fondo crema */
-.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 1.5px solid rgba(229, 138, 62, 0.85); filter: blur(1.5px); box-shadow: 0 0 22px 2px rgba(229, 138, 62, 0.22); transform: rotate(-18deg); }
-.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 1.5px solid rgba(196, 80, 26, 0.7); filter: blur(1.5px); box-shadow: 0 0 24px 2px rgba(196, 80, 26, 0.18); transform: rotate(8deg); animation-duration: 36s; }
-.ambient .o3 { width: 620px; height: 620px; top: 22%; left: 30%; background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 65%); filter: blur(40px); animation-duration: 42s; }
-.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 1px solid rgba(229, 138, 62, 0.6); filter: blur(1px); box-shadow: 0 0 16px 1px rgba(229, 138, 62, 0.16); transform: rotate(-35deg); animation-duration: 33s; }
-@keyframes drift {
-  from { translate: 0 0; scale: 1; }
-  to   { translate: 40px -30px; scale: 1.06; }
-}
-@media (prefers-reduced-motion: reduce) { .ambient span { animation: none; } }
+.ambient .o1 { width: 1000px; height: 560px; top: -250px; right: -300px; border: 1.5px solid rgba(229, 138, 62, 0.85); box-shadow: 0 0 22px 2px rgba(229, 138, 62, 0.22); transform: rotate(-18deg); }
+.ambient .o2 { width: 1200px; height: 640px; bottom: -430px; left: -300px; border: 1.5px solid rgba(196, 80, 26, 0.7); box-shadow: 0 0 24px 2px rgba(196, 80, 26, 0.18); transform: rotate(8deg); }
+.ambient .o3 { width: 620px; height: 620px; top: 22%; left: 30%; background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent 65%); }
+.ambient .o4 { width: 700px; height: 360px; top: 38%; left: -380px; border: 1px solid rgba(229, 138, 62, 0.6); box-shadow: 0 0 16px 1px rgba(229, 138, 62, 0.16); transform: rotate(-35deg); }
 
 .glass-app { position: relative; z-index: 1; }
 .glass-app h1 { letter-spacing: -.025em; }
@@ -90,8 +84,6 @@ body {
    (Boceto: se aplica sobre los estilos existentes sin reescribir cada pantalla.) */
 .glass-app [style*="background: rgb(255, 255, 255)"] {
   background: var(--glass) !important;
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
   /* (el borde izquierdo se respeta: algunas tarjetas lo usan con el color del cliente) */
   border-top-color: var(--glass-border) !important;
   border-right-color: var(--glass-border) !important;
@@ -132,8 +124,6 @@ body {
 
 .btn-ghost {
   background: var(--glass);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
   color: var(--ink);
   border: 0.5px solid var(--glass-border);
   padding: 9px 16px;
@@ -197,8 +187,6 @@ body {
 /* ── Card ── */
 .card {
   background: var(--glass);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
   border: 0.5px solid var(--glass-border);
   border-radius: 18px;
   box-shadow: var(--glass-shadow);
@@ -338,3 +326,7 @@ body {
   /* Que nada empuje el ancho de la página */
   .glass-app { overflow-x: clip; }
 }
+
+/* Computadores más modestos (4 núcleos o menos): sin ningún desenfoque, para que todo vaya fluido */
+html.lite *, html.lite *::before, html.lite *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+html.lite .glass-panel { background: rgba(255, 255, 255, 0.94); }

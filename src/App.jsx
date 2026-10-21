@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import supabase from './lib/supabaseClient'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
-import Dashboard from './components/Dashboard'
-import Roster from './components/Roster'
-import Campanas from './components/Campanas'
-import Clientes from './components/Clientes'
-import ClienteDashboard from './components/ClienteDashboard'
-import Servicios from './components/Servicios'
-import PagosGlobales from './components/PagosGlobales'
-import VistaCliente from './components/VistaCliente'
-import VistaReporte from './components/VistaReporte'
-import VistaClienteDashboard from './components/VistaClienteDashboard'
-import VistaEditor from './components/VistaEditor'
-import SocialBoost from './components/SocialBoost'
 import './index.css'
+
+// Cada página se descarga recién cuando se abre (así la app carga más rápido)
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const Roster = lazy(() => import('./components/Roster'))
+const Campanas = lazy(() => import('./components/Campanas'))
+const Clientes = lazy(() => import('./components/Clientes'))
+const ClienteDashboard = lazy(() => import('./components/ClienteDashboard'))
+const Servicios = lazy(() => import('./components/Servicios'))
+const PagosGlobales = lazy(() => import('./components/PagosGlobales'))
+const VistaCliente = lazy(() => import('./components/VistaCliente'))
+const VistaReporte = lazy(() => import('./components/VistaReporte'))
+const VistaClienteDashboard = lazy(() => import('./components/VistaClienteDashboard'))
+const VistaEditor = lazy(() => import('./components/VistaEditor'))
+const SocialBoost = lazy(() => import('./components/SocialBoost'))
+
+const Cargando = () => <div style={{ padding: 40, color: '#AAA', fontSize: 13 }}>Cargando…</div>
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
@@ -80,10 +84,10 @@ export default function App() {
     setPage(p)
   }
 
-  if (publicToken) return <><Ambient /><VistaCliente token={publicToken} /></>
-  if (reportToken) return <><Ambient /><VistaReporte token={reportToken} /></>
-  if (clientDashboardToken) return <><Ambient /><VistaClienteDashboard token={clientDashboardToken} /></>
-  if (editorToken) return <><Ambient /><VistaEditor token={editorToken} /></>
+  if (publicToken) return <><Ambient /><Suspense fallback={<Cargando />}><VistaCliente token={publicToken} /></Suspense></>
+  if (reportToken) return <><Ambient /><Suspense fallback={<Cargando />}><VistaReporte token={reportToken} /></Suspense></>
+  if (clientDashboardToken) return <><Ambient /><Suspense fallback={<Cargando />}><VistaClienteDashboard token={clientDashboardToken} /></Suspense></>
+  if (editorToken) return <><Ambient /><Suspense fallback={<Cargando />}><VistaEditor token={editorToken} /></Suspense></>
 
   if (!auth) return <><Ambient /><Login onLogin={() => setAuth(true)} /></>
 
@@ -93,6 +97,7 @@ export default function App() {
     <div className="glass-app" style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar page={page} setPage={handleSetPage} onLogout={handleLogout} />
       <main style={{ flex: 1, minWidth: 0, paddingBottom: isMobile ? 'calc(76px + env(safe-area-inset-bottom))' : 0 }}>
+        <Suspense fallback={<Cargando />}>
         {page === 'dashboard'      && <Dashboard onNavigate={setPage} />}
         {page === 'roster'         && <Roster />}
         {page === 'campanas'       && <Campanas initialCamp={campanaFromClient} />}
@@ -107,6 +112,7 @@ export default function App() {
             onOpenCampaign={handleOpenCampanaFromClient}
           />
         )}
+        </Suspense>
       </main>
     </div>
     </>

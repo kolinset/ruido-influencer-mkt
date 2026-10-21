@@ -37,15 +37,14 @@ export default function VistaSocialBoost({ isMobile }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const sem = (await publicSql('sbSemana', inicio))[0]
+      // En paralelo lo que no depende de la semana
+      const [semR, kMes, reparto] = await Promise.all([publicSql('sbSemana', inicio), publicSql('sbVideosDelMes', mes), publicSql('sbRepartoDelMes', mes)])
+      const sem = semR[0]
+      const [slotsR, kSem] = sem ? await Promise.all([publicSql('sbSlotsDeSemana', sem.id), publicSql('sbVideosDeSemana', sem.id)]) : [[], [{ n: 0 }]]
       setIgual(!!sem?.sin_prioridad)
-      if (sem) {
-        setSlots(await publicSql('sbSlotsDeSemana', sem.id))
-      } else setSlots([])
-      const kMes = await publicSql('sbVideosDelMes', mes)
-      const kSem = sem ? await publicSql('sbVideosDeSemana', sem.id) : [{ n: 0 }]
+      setSlots(slotsR)
       setKpi({ mes: kMes[0].n, semana: kSem[0].n })
-      setReparto(await publicSql('sbRepartoDelMes', mes))
+      setReparto(reparto)
     } catch (e) { console.error(e) }
     setLoading(false)
   }, [inicio])
