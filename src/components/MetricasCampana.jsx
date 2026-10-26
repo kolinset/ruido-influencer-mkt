@@ -32,13 +32,136 @@ function Thumb({ src, size }) {
 }
 
 // Para una canción de Social Boost se pasa `cancionId` en vez de `campaignId`.
+// ───── Tabla de videos: todos los datos de cada video y orden por la columna que se elija ─────
+const pctTxt = v => v == null ? '—' : Number(v).toFixed(2).replace('.', ',') + '%'
+const fechaNum = f => { const t = Date.parse(f || ''); return Number.isFinite(t) ? t : null }
+const COLUMNAS = [
+  { k: 'user', label: 'Usuario', val: p => (p.handle || '').toLowerCase(), texto: true },
+  { k: 'followers', label: 'Seguidores', val: p => p.followers, ver: p => p.followers ? fmt(p.followers) : '—' },
+  { k: 'fecha', label: 'Subido', val: p => fechaNum(p.fecha), ver: p => p.fecha || '—' },
+  { k: 'engagement', label: 'Engagement', val: p => p.engagement, ver: p => pctTxt(p.engagement) },
+  { k: 'views', label: 'Views', val: p => p.views, ver: p => exacto(p.views), fuerte: true },
+  { k: 'vxs', label: 'Views/Seg.', val: p => p.followers ? (p.views || 0) / p.followers * 100 : null, ver: p => p.followers ? pctTxt((p.views || 0) / p.followers * 100) : '—' },
+  { k: 'likes', label: 'Likes', val: p => p.likes, ver: p => exacto(p.likes) },
+  { k: 'comments', label: 'Comentarios', val: p => p.comments, ver: p => exacto(p.comments) },
+  { k: 'saves', label: 'Guardados', val: p => p.saves, ver: p => p.saves == null ? '—' : exacto(p.saves), opcional: true },
+  { k: 'shares', label: 'Compartidos', val: p => p.shares, ver: p => exacto(p.shares) },
+]
+
+function TablaVideos({ posts, isMobile, mostrarRed }) {
+  const [orden, setOrden] = useState({ k: 'views', dir: 'desc' })
+  const [verTodos, setVerTodos] = useState(false)
+  // "Guardados" solo si algún video lo trae (los reportes de Instagram no lo traen)
+  const cols = COLUMNAS.filter(c => !c.opcional || posts.some(p => p.saves != null))
+  const col = cols.find(c => c.k === orden.k) || cols.find(c => c.k === 'views')
+  const ordenados = [...posts].sort((a, b) => {
+    const va = col.val(a), vb = col.val(b)
+    if (va == null && vb == null) return 0
+    if (va == null) return 1            // los vacíos siempre al final
+    if (vb == null) return -1
+    const r = col.texto ? String(va).localeCompare(String(vb)) : va - vb
+    return orden.dir === 'asc' ? r : -r
+  })
+  const visibles = verTodos ? ordenados : ordenados.slice(0, 10)
+  const ordenarPor = k => setOrden(o => o.k === k ? { k, dir: o.dir === 'desc' ? 'asc' : 'desc' } : { k, dir: k === 'user' ? 'asc' : 'desc' })
+  const flecha = k => orden.k === k ? (orden.dir === 'desc' ? ' ↓' : ' ↑') : ''
+  const thumbDe = p => p.thumb || (p.plat === 'tiktok' ? `https://assets.tokchart.com/video_thumbnails/${p.video_id}` : null)
+  const red = p => mostrarRed && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 4, marginRight: 6, verticalAlign: 1, background: p.plat === 'tiktok' ? '#1A1A1A' : '#FDE8F0', color: p.plat === 'tiktok' ? '#fff' : '#C2185B' }}>{p.plat === 'tiktok' ? 'TT' : 'IG'}</span>
+
+  return (
+    <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: isMobile ? '12px 14px' : '14px 18px', borderBottom: '0.5px solid #F0F0EE', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 500 }}>Videos <span style={{ color: '#AAA', fontWeight: 400 }}>· {posts.length}</span></div>
+        {isMobile ? (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#AAA' }}>Ordenar por</span>
+            <select className="input" style={{ width: 'auto', padding: '6px 8px', fontSize: 12.5 }} value={orden.k} onChange={e => setOrden({ k: e.target.value, dir: e.target.value === 'user' ? 'asc' : 'desc' })}>
+              {cols.map(c => <option key={c.k} value={c.k}>{c.label}</option>)}
+            </select>
+            <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setOrden(o => ({ ...o, dir: o.dir === 'desc' ? 'asc' : 'desc' }))} title="Cambiar orden">{orden.dir === 'desc' ? '↓' : '↑'}</button>
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: '#AAA' }}>Toca un título para ordenar</div>
+        )}
+      </div>
+
+      {isMobile ? (
+        visibles.map((p, i) => (
+          <div key={p.plat + p.video_id} style={{ padding: '12px 14px', borderBottom: i < visibles.length - 1 ? '0.5px solid #F0F0EE' : 'none' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <Thumb src={thumbDe(p)} size={52} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{red(p)}{p.handle ? '@' + p.handle : 'Video'}</div>
+                <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>{[p.followers ? `${fmt(p.followers)} seguidores` : null, p.fecha].filter(Boolean).join(' · ')}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.02em' }}>{fmt(p.views)}</div>
+                <div style={{ fontSize: 10, color: '#AAA' }}>views</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px 10px', marginTop: 10 }}>
+              {cols.filter(c => !['user', 'followers', 'fecha', 'views'].includes(c.k)).map(c => (
+                <div key={c.k}>
+                  <div style={{ fontSize: 9.5, color: orden.k === c.k ? '#C4501A' : '#AAA', textTransform: 'uppercase', letterSpacing: '.06em' }}>{c.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: orden.k === c.k ? 600 : 500 }}>{c.ver(p)}</div>
+                </div>
+              ))}
+            </div>
+            {p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, color: '#C4501A', textDecoration: 'none', fontWeight: 500 }}>Ver video ↗</a>}
+          </div>
+        ))
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720, fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
+                <th className="th" style={{ width: 24, padding: '10px 4px 10px 12px' }}>#</th>
+                {cols.map(c => (
+                  <th key={c.k} className="th" style={{ padding: '10px 7px', letterSpacing: 0, textTransform: 'none', fontSize: 11.5, textAlign: c.k === 'user' ? 'left' : 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', color: orden.k === c.k ? '#C4501A' : undefined }}
+                    onClick={() => ordenarPor(c.k)} title={`Ordenar por ${c.label.toLowerCase()}`}>
+                    {c.label}{flecha(c.k)}
+                  </th>
+                ))}
+                <th className="th"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibles.map((p, i) => (
+                <tr key={p.plat + p.video_id} style={{ borderBottom: '0.5px solid #F0F0EE' }}>
+                  <td className="td" style={{ color: '#AAA', padding: '9px 4px 9px 12px', fontSize: 12.5 }}>{i + 1}</td>
+                  {cols.map(c => c.k === 'user' ? (
+                    <td key={c.k} className="td" style={{ padding: '9px 7px', fontSize: 12.5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Thumb src={thumbDe(p)} size={38} />
+                        <span style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{red(p)}{p.handle ? '@' + p.handle : 'Video'}</span>
+                      </div>
+                    </td>
+                  ) : (
+                    <td key={c.k} className="td" style={{ padding: '9px 7px', fontSize: 12.5, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: c.fuerte || orden.k === c.k ? 600 : 400 }}>{c.ver(p)}</td>
+                  ))}
+                  <td className="td" style={{ padding: '9px 10px 9px 4px' }}>{p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: '#C4501A', textDecoration: 'none', fontWeight: 500, whiteSpace: 'nowrap' }}>Ver ↗</a>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {posts.length > 10 && (
+        <div style={{ padding: 10, textAlign: 'center', borderTop: '0.5px solid #F0F0EE' }}>
+          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setVerTodos(v => !v)}>{verTodos ? 'Ver menos' : `Ver todos (${posts.length})`}</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métricas de la campaña', admin = false, onData }) {
   const isMobile = useIsMobile()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actualizando, setActualizando] = useState(false)
-  const [verTodos, setVerTodos] = useState(false)
   const [red, setRed] = useState('total') // 'total' | 'tiktok' | 'instagram'
 
   const cargar = useCallback(async (forzar = false) => {
@@ -87,8 +210,6 @@ export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métr
     .filter(([plat]) => vista === 'total' || plat === vista)
     .flatMap(([plat, p]) => (p.posts || []).map(x => ({ ...x, plat })))
     .sort((a, b) => (b.views || 0) - (a.views || 0))
-  const visibles = verTodos ? posts : posts.slice(0, 10)
-  const maxViews = posts[0]?.views || 1
 
   const kpis = [
     ['Views', t.views, true],
@@ -134,7 +255,7 @@ export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métr
           {[['total', 'Total', data.total.views], ...redes.map(k => [k, k === 'tiktok' ? 'TikTok' : 'Instagram', data.plataformas[k].views])].map(([k, label, v]) => {
             const activo = vista === k
             return (
-              <button key={k} onClick={() => { setRed(k); setVerTodos(false) }} style={{
+              <button key={k} onClick={() => setRed(k)} style={{
                 textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 12, padding: isMobile ? '10px 12px' : '11px 14px',
                 background: activo ? 'linear-gradient(180deg, rgba(229, 138, 62, 0.16), rgba(196, 80, 26, 0.10))' : '#fff',
                 border: activo ? '1.5px solid #C4501A' : '0.5px solid #E5E5E2',
@@ -148,48 +269,7 @@ export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métr
         </div>
       )}
 
-      {posts.length > 0 && (
-        <div style={{ background: '#fff', border: '0.5px solid #E5E5E2', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: isMobile ? '12px 14px' : '14px 18px', borderBottom: '0.5px solid #F0F0EE', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 500 }}>Ranking de videos <span style={{ color: '#AAA', fontWeight: 400 }}>· {posts.length}</span></div>
-            <div style={{ fontSize: 11, color: '#AAA' }}>por views</div>
-          </div>
-          {visibles.map((p, i) => (
-            <div key={p.plat + p.video_id} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '10px 14px' : '10px 18px', borderBottom: i < visibles.length - 1 ? '0.5px solid #F0F0EE' : 'none' }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: 999, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11.5, fontWeight: 600,
-                background: i < 3 ? 'linear-gradient(145deg, #E58A3E, #C4501A)' : '#F2EDE6', color: i < 3 ? '#fff' : '#8A7F76',
-              }}>{i + 1}</div>
-              <Thumb src={p.thumb || (p.plat === 'tiktok' ? `https://assets.tokchart.com/video_thumbnails/${p.video_id}` : null)} size={isMobile ? 44 : 52} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {ambas && vista === 'total' && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 4, marginRight: 6, verticalAlign: 1, background: p.plat === 'tiktok' ? '#1A1A1A' : '#FDE8F0', color: p.plat === 'tiktok' ? '#fff' : '#C2185B' }}>{p.plat === 'tiktok' ? 'TT' : 'IG'}</span>}
-                  {p.handle ? '@' + p.handle : 'Video'}
-                </div>
-                <div style={{ fontSize: 11, color: '#AAA', marginTop: 2 }}>
-                  {isMobile
-                    ? `${exacto(p.likes)} likes${p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}%` : ''}`
-                    : `${p.followers ? `${fmt(p.followers)} seguidores · ` : ''}${exacto(p.likes)} likes${p.engagement != null ? ` · ${String(p.engagement).replace('.', ',')}% eng.` : ''}`}
-                </div>
-                <div style={{ height: 4, background: '#F2EDE6', borderRadius: 2, marginTop: 6, overflow: 'hidden', maxWidth: 260 }}>
-                  <div style={{ height: '100%', width: Math.max(3, Math.round((p.views || 0) / maxViews * 100)) + '%', background: 'linear-gradient(90deg, #C4501A, #E58A3E)', borderRadius: 2 }} />
-                </div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.02em' }}>{fmt(p.views)}</div>
-                <div style={{ fontSize: 10, color: '#AAA' }}>views</div>
-              </div>
-              {p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: '#C4501A', textDecoration: 'none', fontWeight: 500, flexShrink: 0 }}>{isMobile ? '↗' : 'Ver ↗'}</a>}
-            </div>
-          ))}
-          {posts.length > 10 && (
-            <div style={{ padding: 10, textAlign: 'center', borderTop: '0.5px solid #F0F0EE' }}>
-              <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setVerTodos(v => !v)}>{verTodos ? 'Ver menos' : `Ver todos (${posts.length})`}</button>
-            </div>
-          )}
-        </div>
-      )}
+      {posts.length > 0 && <TablaVideos posts={posts} isMobile={isMobile} mostrarRed={ambas && vista === 'total'} key={vista} />}
     </div>
   )
 }
