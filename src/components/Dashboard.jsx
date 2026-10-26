@@ -94,6 +94,7 @@ export default function Dashboard({ onNavigate }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [resumenBusy, setResumenBusy] = useState('')
+  const [errorCarga, setErrorCarga] = useState('')
 
   useEffect(() => { fetchDashboard() }, [])
 
@@ -104,14 +105,18 @@ export default function Dashboard({ onNavigate }) {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/dashboard', { headers: session ? { Authorization: `Bearer ${session.access_token}` } : {} })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'No se pudo cargar el dashboard')
-      setData(json)
-    } catch (e) { console.error(e) }
+      if (!res.ok || !Array.isArray(json.topInfs)) throw new Error(json.error || 'No se pudo cargar el dashboard')
+      setData(json); setErrorCarga('')
+    } catch (e) { console.error(e); setErrorCarga(e.message) }
     setLoading(false)
   }
 
   if (loading) return <div style={{ padding: 40, color: '#AAA', fontSize: 13 }}>Cargando...</div>
-  if (!data) return null
+  if (!data) return (
+    <div className="page-pad" style={{ color: '#A32D2D', fontSize: 13 }}>
+      No se pudo cargar el dashboard{errorCarga ? `: ${errorCarga}` : ''}. <button className="btn-ghost" style={{ fontSize: 12, marginLeft: 8 }} onClick={fetchDashboard}>Reintentar</button>
+    </div>
+  )
 
   const campsMes = data.campsMes
   const topInfs = data.topInfs

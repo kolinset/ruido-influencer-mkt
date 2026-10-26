@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { publicSql } from '../lib/db'
 import { calcMetas, totalRestante } from '../lib/sbMetas'
 import MetricasCampana from './MetricasCampana'
+import SbCuentas from './SbCuentas'
 
 // Vista de solo lectura de Social Boost para el portal del cliente.
 
@@ -30,6 +31,9 @@ export default function VistaSocialBoost({ isMobile }) {
   const [loading, setLoading] = useState(true)
   const [abierta, setAbierta] = useState(null)   // canción abierta (slot)
   const [videos, setVideos] = useState([])
+  const [cuentasOn, setCuentasOn] = useState(false) // la agencia activó la pestaña "Cuentas" para el portal
+  const [verCuentas, setVerCuentas] = useState(false)
+  useEffect(() => { publicSql('sbCuentasPortal').then(r => setCuentasOn(r[0]?.valor === true)).catch(() => {}) }, [])
 
   const mes = firstOfMonth(inicio)
   const esActual = inicio === mondayOf(ymd(new Date()))
@@ -113,10 +117,21 @@ export default function VistaSocialBoost({ isMobile }) {
     )
   }
 
+  // Pestañas "Semana / Cuentas" (solo si la agencia activó "Cuentas" para el portal)
+  const pestanas = cuentasOn && (
+    <div className="tabs-scroll" style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, marginBottom: 16, width: 'fit-content', border: '0.5px solid #E5E5E2' }}>
+      {[[false, 'Semana'], [true, 'Cuentas']].map(([v, l]) => (
+        <div key={l} onClick={() => setVerCuentas(v)} style={{ padding: '6px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13, background: verCuentas === v ? '#fff' : 'transparent', color: verCuentas === v ? '#1A1A1A' : '#888', boxShadow: verCuentas === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</div>
+      ))}
+    </div>
+  )
+  if (verCuentas && cuentasOn) return <div>{pestanas}<SbCuentas /></div>
+
   // ───── Panel de la semana ─────
   const total = reparto.reduce((a, r) => a + r.n, 0)
   return (
     <div>
+      {pestanas}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 500, letterSpacing: '-.01em' }}>{tituloSemana(inicio)}</div>

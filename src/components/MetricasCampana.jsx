@@ -48,7 +48,7 @@ const COLUMNAS = [
   { k: 'shares', label: 'Compartidos', val: p => p.shares, ver: p => exacto(p.shares) },
 ]
 
-function TablaVideos({ posts, isMobile, mostrarRed }) {
+export function TablaVideos({ posts, isMobile, mostrarRed }) {
   const [orden, setOrden] = useState({ k: 'views', dir: 'desc' })
   const [verTodos, setVerTodos] = useState(false)
   // "Guardados" solo si algún video lo trae (los reportes de Instagram no lo traen)

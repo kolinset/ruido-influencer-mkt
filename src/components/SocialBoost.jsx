@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
 import MetricasCampana from './MetricasCampana'
+import SbCuentas from './SbCuentas'
 import { convertMany, isMobileTikTok, sbTokchartCall } from '../lib/links'
 import { calcMetas, prioridadLibre, totalRestante, TOTAL_SEMANA, PCT_PRIORIDAD } from '../lib/sbMetas'
 
@@ -195,6 +196,14 @@ export default function SocialBoost() {
   if (vista === 'config') {
     return <Config cuentas={cuentas} onBack={() => { setVista('dashboard'); cargar() }} onChanged={cargar} />
   }
+  if (vista === 'cuentas') {
+    return (
+      <div className="page-pad" style={{ maxWidth: 1240, margin: '0 auto' }}>
+        <button className="btn-ghost" style={{ fontSize: 12, marginBottom: 14 }} onClick={() => setVista('dashboard')}>← {tituloSemana(inicio)}</button>
+        <SbCuentas admin />
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '28px 28px', maxWidth: 1240, margin: '0 auto' }}>
@@ -229,6 +238,7 @@ export default function SocialBoost() {
               </div>
             )}
           </div>
+          <button className="btn-ghost" title="Rendimiento de cada cuenta" style={{ height: 38, fontSize: 12.5, flexShrink: 0 }} onClick={() => setVista('cuentas')}>📊 Cuentas</button>
           <button className="btn-ghost" title="Configuración" style={{ width: 38, height: 38, padding: 0, fontSize: 16, flexShrink: 0 }} onClick={() => setVista('config')}>⚙</button>
         </div>
       </div>

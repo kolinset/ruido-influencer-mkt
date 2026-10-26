@@ -143,6 +143,9 @@ export const PUBLIC_QUERIES = {
     LEFT JOIN sb_cuentas cu ON cu.id = COALESCE(v.cuenta_id, (SELECT x.id FROM sb_cuentas x WHERE x.handle <> '' AND v.handle <> '' AND lower(replace(x.handle, '@', '')) = lower(v.handle) LIMIT 1))
     WHERE c.mes = $1 GROUP BY cu.id, cu.nombre ORDER BY n DESC`,
 
+  // ¿La pestaña "Cuentas" de Social Boost está visible en el portal?
+  sbCuentasPortal: `SELECT valor FROM ajustes WHERE clave = 'sb_cuentas_portal'`,
+
   sbVideosDeCancion: `
     SELECT v.id, v.link_web, v.link_original, v.handle, s.inicio::text AS semana_inicio, cu.nombre AS cuenta_nombre
     FROM sb_videos v LEFT JOIN sb_semanas s ON s.id = v.semana_id
