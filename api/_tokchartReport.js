@@ -29,41 +29,38 @@ function abreviado(s) {
   return Math.round(Number(m[1]) * mult)
 }
 
-export function parseReport(html) {
-  // ── Totales: tarjetas "Views / 44K / 44,494 total" ──
-  const tarjetas = {}
-  const reCard = /uppercase tracking-wide[^>]*>\s*([^<]+?)\s*<\/div>\s*<div[^>]*>([\s\S]*?)<\/div>\s*<div[^>]*>([\s\S]*?)<\/div>/g
-  for (const m of html.matchAll(reCard)) {
-    const label = texto(m[1]).toLowerCase()
-    if (!(label in tarjetas)) tarjetas[label] = { corto: texto(m[2]), detalle: texto(m[3]) }
-  }
-  const total = label => {
-    const t = tarjetas[label]
-    if (!t) return null
-    const exacto = t.detalle.match(/([\d,]+)\s+total/i)
-    return exacto ? entero(exacto[1]) : abreviado(t.corto)
-  }
-  // En TikTok la tarjeta se llama "Views"; en los reportes de Instagram, "Plays"
-  const views = total('views') ?? total('plays')
-  if (views == null) throw new Error('No se encontraron las views en el reporte (¿cambió el diseño de Tokchart?)')
-  const eng = tarjetas['avg engagement']
-  const engagement = eng ? decimal((eng.detalle.match(/([\d.]+)%\s*exact/i) || [])[1] ?? eng.corto) : null
+// Celda de número: si trae el valor exacto ("74K" + "73,982") se usa el exacto
+const celdaNum = html => {
+  const ex = html.match(/class="[^"]*\bui-ex\b[^"]*"[^>]*>([\s\S]*?)<\/div>/)
+  return texto(ex ? ex[1] : html)
+}
+// Nombres de columna de Tokchart → nombre interno (en Instagram "Views" se llama "Plays")
+const COLUMNAS = { followers: 'followers', posted: 'fecha', uploaded: 'fecha', engagement: 'engagement', views: 'views', plays: 'views', likes: 'likes', comments: 'comments', saves: 'saves', shares: 'shares' }
 
-  // ── Videos: filas <tr data-video-id="..."> leídas según los títulos de las columnas ──
-  const tabla = html.slice(html.indexOf('Campaign Posts'))
-  const ths = [...(tabla.match(/<thead[\s\S]*?<\/thead>/) || [''])[0].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map(m => texto(m[1]).toLowerCase())
-  const col = nombre => ths.findIndex(h => h === nombre)
+export function parseReport(html) {
+  // ── Tabla de videos: títulos de columna, filas <tr data-id> y fila "Total" del pie ──
+  const ini = html.indexOf('<table'), fin = html.indexOf('</table>', ini)
+  if (ini < 0 || fin < 0) throw new Error('No se encontró la tabla de videos en el reporte (¿cambió el diseño de Tokchart?)')
+  const tabla = html.slice(ini, fin)
+  const ths = [...(tabla.match(/<thead[\s\S]*?<\/thead>/) || [''])[0].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)]
+    .map(m => COLUMNAS[texto(m[1]).replace(/\?/g, '').trim().toLowerCase()] || null)
+  const col = nombre => ths.indexOf(nombre)
+  const celdasDe = fila => [...fila.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1])
+
+  const cuerpo = (tabla.match(/<tbody[\s\S]*?<\/tbody>/) || [''])[0]
   const posts = []
-  for (const m of tabla.matchAll(/<tr[^>]*data-video-id="(\d+)"[^>]*>([\s\S]*?)<\/tr>/g)) {
-    const celdas = [...m[2].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1])
-    const link = (m[2].match(/href="(https:\/\/www\.(?:tiktok|instagram)\.com\/[^"]+)"/) || [])[1] || ''
+  for (const m of cuerpo.matchAll(/<tr[^>]*\bdata-id="(\d+)"[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const celdas = celdasDe(m[2])
+    const link = (m[2].match(/href="(https:\/\/www\.(?:tiktok\.com\/@[^"/]+\/(?:video|photo)\/\d+|instagram\.com\/(?:[^"/]+\/)?(?:reel|reels|p|tv)\/[^"/?]+)[^"]*)"/) || [])[1] || ''
     const handle = (m[2].match(/>\s*@([^<\s]+)\s*</) || [])[1] || ''
     const thumb = (m[2].match(/<img[^>]+src="(https:\/\/assets\.tokchart\.com\/[^"]+)"/) || [])[1] || ''
-    const val = (nombre, fn) => { const i = col(nombre); return i >= 0 && celdas[i] != null ? fn(texto(celdas[i])) : null }
+    const val = (nombre, fn) => { const i = col(nombre); return i >= 0 && celdas[i] != null ? fn(celdaNum(celdas[i])) : null }
+    // TikTok: el ID del video sale del link; Instagram: el número de fila de Tokchart
+    const ttId = (link.match(/tiktok\.com\/@[^/]+\/(?:video|photo)\/(\d+)/) || [])[1]
     posts.push({
-      video_id: m[1], link, handle, thumb,
+      video_id: ttId || m[1], link, handle, thumb,
       followers: val('followers', abreviado),
-      fecha: val('uploaded', s => s) || '',
+      fecha: val('fecha', s => s) || '',
       engagement: val('engagement', decimal),
       views: val('views', entero),
       likes: val('likes', entero),
@@ -73,10 +70,18 @@ export function parseReport(html) {
     })
   }
 
-  const actualizado = (texto(html).match(/Last updated:\s*(.+?\bago)/i) || [])[1] || ''
+  // ── Totales: fila "Total · N posts" al pie de la tabla ──
+  const pie = celdasDe((tabla.match(/<tfoot[\s\S]*?<\/tfoot>/) || [''])[0])
+  const total = nombre => { const i = col(nombre); const t = i >= 0 && pie[i] != null ? texto(pie[i]) : ''; return t ? entero(t) : null }
+  const views = total('views')
+  if (views == null) throw new Error('No se encontraron las views en el reporte (¿cambió el diseño de Tokchart?)')
+  const engTxt = col('engagement') >= 0 ? texto(pie[col('engagement')] || '') : ''
+  const totalPosts = entero((texto(pie.join(' ')).match(/Total\s*·\s*([\d,]+)\s*posts?/i) || [])[1])
+
+  const actualizado = (texto(html).match(/(?:Last updated:|Updated)\s*(.+?\bago)/i) || [])[1] || ''
   return {
     views, likes: total('likes'), comments: total('comments'), saves: total('saves'), shares: total('shares'),
-    engagement, posts, tokchart_actualizado: actualizado,
+    engagement: engTxt ? decimal(engTxt) : null, posts, totalPosts, tokchart_actualizado: actualizado,
   }
 }
 
@@ -88,8 +93,9 @@ export async function fetchReport(url) {
   })
   if (!r.ok) throw new Error(`Tokchart respondió ${r.status}`)
   const rep = parseReport(await r.text())
-  // Campañas grandes: la tabla de videos puede venir por páginas (?page=2...). Los totales siempre vienen completos.
-  if (rep.posts.length >= 10) {
+  // Campañas grandes: si la tabla no trae todos los videos, se piden las páginas siguientes (?page=2...).
+  // Los totales siempre vienen completos.
+  if (rep.totalPosts ? rep.posts.length < rep.totalPosts : rep.posts.length >= 10) {
     const vistos = new Set(rep.posts.map(p => p.video_id))
     for (let pag = 2; pag <= MAX_PAGINAS; pag++) {
       try {
