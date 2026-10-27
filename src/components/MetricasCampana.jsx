@@ -35,8 +35,10 @@ function Thumb({ src, size }) {
 // ───── Tabla de videos: todos los datos de cada video y orden por la columna que se elija ─────
 const pctTxt = v => v == null ? '—' : Number(v).toFixed(2).replace('.', ',') + '%'
 const fechaNum = f => { const t = Date.parse(f || ''); return Number.isFinite(t) ? t : null }
+const sonidoDe = p => [p.cancion, p.artista].filter(Boolean).join(' - ')
 const COLUMNAS = [
   { k: 'user', label: 'Usuario', val: p => (p.handle || '').toLowerCase(), texto: true },
+  { k: 'sonido', label: 'Sonido', val: p => sonidoDe(p).toLowerCase() || null, ver: p => sonidoDe(p) || '—', texto: true, izq: true, mostrar: ps => ps.some(p => p.cancion) },
   { k: 'followers', label: 'Seguidores', val: p => p.followers, ver: p => p.followers ? fmt(p.followers) : '—' },
   { k: 'fecha', label: 'Subido', val: p => fechaNum(p.fecha), ver: p => p.fecha || '—' },
   { k: 'engagement', label: 'Engagement', val: p => p.engagement, ver: p => pctTxt(p.engagement) },
@@ -44,15 +46,16 @@ const COLUMNAS = [
   { k: 'vxs', label: 'Views/Seg.', val: p => p.followers ? (p.views || 0) / p.followers * 100 : null, ver: p => p.followers ? pctTxt((p.views || 0) / p.followers * 100) : '—' },
   { k: 'likes', label: 'Likes', val: p => p.likes, ver: p => exacto(p.likes) },
   { k: 'comments', label: 'Comentarios', val: p => p.comments, ver: p => exacto(p.comments) },
-  { k: 'saves', label: 'Guardados', val: p => p.saves, ver: p => p.saves == null ? '—' : exacto(p.saves), opcional: true },
+  { k: 'saves', label: 'Guardados', val: p => p.saves, ver: p => p.saves == null ? '—' : exacto(p.saves), mostrar: ps => ps.some(p => p.saves != null) },
   { k: 'shares', label: 'Compartidos', val: p => p.shares, ver: p => exacto(p.shares) },
 ]
 
 export function TablaVideos({ posts, isMobile, mostrarRed }) {
   const [orden, setOrden] = useState({ k: 'views', dir: 'desc' })
   const [verTodos, setVerTodos] = useState(false)
-  // "Guardados" solo si algún video lo trae (los reportes de Instagram no lo traen)
-  const cols = COLUMNAS.filter(c => !c.opcional || posts.some(p => p.saves != null))
+  // "Sonido" solo si los videos traen su canción (Social Boost → Cuentas); "Guardados" solo si algún
+  // video lo trae (los reportes de Instagram no lo traen)
+  const cols = COLUMNAS.filter(c => !c.mostrar || c.mostrar(posts))
   const col = cols.find(c => c.k === orden.k) || cols.find(c => c.k === 'views')
   const ordenados = [...posts].sort((a, b) => {
     const va = col.val(a), vb = col.val(b)
@@ -93,6 +96,7 @@ export function TablaVideos({ posts, isMobile, mostrarRed }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{red(p)}{p.handle ? '@' + p.handle : 'Video'}</div>
                 <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>{[p.followers ? `${fmt(p.followers)} seguidores` : null, p.fecha].filter(Boolean).join(' · ')}</div>
+                {p.cancion && <div style={{ fontSize: 11.5, color: '#888', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>♪ {sonidoDe(p)}</div>}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.02em' }}>{fmt(p.views)}</div>
@@ -100,7 +104,7 @@ export function TablaVideos({ posts, isMobile, mostrarRed }) {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px 10px', marginTop: 10 }}>
-              {cols.filter(c => !['user', 'followers', 'fecha', 'views'].includes(c.k)).map(c => (
+              {cols.filter(c => !['user', 'sonido', 'followers', 'fecha', 'views'].includes(c.k)).map(c => (
                 <div key={c.k}>
                   <div style={{ fontSize: 9.5, color: orden.k === c.k ? '#C4501A' : '#AAA', textTransform: 'uppercase', letterSpacing: '.06em' }}>{c.label}</div>
                   <div style={{ fontSize: 13, fontWeight: orden.k === c.k ? 600 : 500 }}>{c.ver(p)}</div>
@@ -117,7 +121,7 @@ export function TablaVideos({ posts, isMobile, mostrarRed }) {
               <tr style={{ background: '#F7F7F5', borderBottom: '0.5px solid #E5E5E2' }}>
                 <th className="th" style={{ width: 24, padding: '10px 4px 10px 12px' }}>#</th>
                 {cols.map(c => (
-                  <th key={c.k} className="th" style={{ padding: '10px 7px', letterSpacing: 0, textTransform: 'none', fontSize: 11.5, textAlign: c.k === 'user' ? 'left' : 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', color: orden.k === c.k ? '#C4501A' : undefined }}
+                  <th key={c.k} className="th" style={{ padding: '10px 7px', letterSpacing: 0, textTransform: 'none', fontSize: 11.5, textAlign: c.k === 'user' || c.izq ? 'left' : 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', color: orden.k === c.k ? '#C4501A' : undefined }}
                     onClick={() => ordenarPor(c.k)} title={`Ordenar por ${c.label.toLowerCase()}`}>
                     {c.label}{flecha(c.k)}
                   </th>
@@ -136,6 +140,8 @@ export function TablaVideos({ posts, isMobile, mostrarRed }) {
                         <span style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{red(p)}{p.handle ? '@' + p.handle : 'Video'}</span>
                       </div>
                     </td>
+                  ) : c.izq ? (
+                    <td key={c.k} className="td" style={{ padding: '9px 7px', fontSize: 12.5, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.ver(p)}>{c.ver(p)}</td>
                   ) : (
                     <td key={c.k} className="td" style={{ padding: '9px 7px', fontSize: 12.5, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: c.fuerte || orden.k === c.k ? 600 : 400 }}>{c.ver(p)}</td>
                   ))}
