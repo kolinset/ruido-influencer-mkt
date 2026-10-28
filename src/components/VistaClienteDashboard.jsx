@@ -423,7 +423,7 @@ export default function VistaClienteDashboard({ token }) {
 
           {/* Métricas leídas del reporte de Tokchart (se actualizan solas cada 30 min) */}
           {!isPlaylisting && (
-            <MetricasCampana key={selectedCamp.id} campaignId={selectedCamp.id} isMobile={isMobile} onData={d => {
+            <MetricasCampana key={selectedCamp.id} campaignId={selectedCamp.id} nombre={selectedCamp.nombre} isMobile={isMobile} onData={d => {
               setMetricas(d)
               if (d?.disponible && d.total.views > 0) setSelectedCamp(c => c && c.id === selectedCamp.id ? { ...c, views_logradas: d.total.views } : c)
             }} />

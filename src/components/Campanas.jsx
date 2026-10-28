@@ -1377,7 +1377,7 @@ export default function Campanas({ initialCamp = null }) {
         <BudgetSummary camp={currentCamp} isMobile={isMobile} />
         {/* Métricas leídas del reporte de Tokchart: lo mismo que ve el cliente en su portal */}
         {currentCamp.tipo !== 'Playlisting' && (
-          <MetricasCampana key={currentCamp.id} campaignId={currentCamp.id} isMobile={isMobile} admin onData={d => {
+          <MetricasCampana key={currentCamp.id} campaignId={currentCamp.id} nombre={currentCamp.nombre} isMobile={isMobile} admin onData={d => {
             if (d?.disponible && d.total.views > 0) setCurrentCamp(c => c && c.id === currentCamp.id ? { ...c, views_logradas: d.total.views } : c)
           }} />
         )}

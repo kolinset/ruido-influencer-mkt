@@ -396,7 +396,7 @@ export default function VistaCliente({ token }) {
       <div style={{ padding: isMobile ? '18px 14px' : '28px 40px' }}>
 
         {/* Métricas leídas del reporte de Tokchart (se actualizan solas cada 30 min) */}
-        {campId && !isPlaylisting && <MetricasCampana campaignId={campId} />}
+        {campId && !isPlaylisting && <MetricasCampana campaignId={campId} nombre={camp?.nombre} />}
 
         {/* Vista Playlisting */}
         {isPlaylisting && (

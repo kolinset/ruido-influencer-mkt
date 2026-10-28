@@ -162,7 +162,28 @@ export function TablaVideos({ posts, isMobile, mostrarRed }) {
   )
 }
 
-export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métricas de la campaña', admin = false, onData }) {
+// Descarga los videos (y el total) en un CSV que abre bien en Excel en español: separado por ";",
+// decimales con coma y con BOM para que se vean los tildes
+function descargarCSV(posts, t, engagement, nombre) {
+  const dec = v => v == null ? '' : Number(v).toFixed(2).replace('.', ',')
+  const n = v => v == null ? '' : String(v)
+  const celda = v => /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v
+  const filas = [
+    ['Red', 'Usuario', 'Link', 'Seguidores', 'Subido', 'Engagement %', 'Views', 'Views/Seguidores %', 'Likes', 'Comentarios', 'Guardados', 'Compartidos'],
+    ...posts.map(p => [p.plat === 'tiktok' ? 'TikTok' : 'Instagram', p.handle ? '@' + p.handle : '', p.link || '', n(p.followers), p.fecha || '',
+      dec(p.engagement), n(p.views), p.followers ? dec((p.views || 0) / p.followers * 100) : '', n(p.likes), n(p.comments), n(p.saves), n(p.shares)]),
+    ['Total', `${posts.length} videos`, '', '', '', dec(engagement), n(t.views), '', n(t.likes), n(t.comments), n(t.saves), n(t.shares)],
+  ]
+  const csv = '\uFEFF' + filas.map(f => f.map(x => celda(String(x))).join(';')).join('\r\n')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const hoy = new Date().toISOString().slice(0, 10)
+  a.download = `${(nombre || 'metricas').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim() || 'metricas'} - ${hoy}.csv`
+  document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métricas de la campaña', nombre = '', admin = false, onData }) {
   const isMobile = useIsMobile()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -232,6 +253,7 @@ export default function MetricasCampana({ campaignId, cancionId, titulo = 'Métr
         <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>{titulo}{vista !== 'total' ? ` · ${vista === 'tiktok' ? 'TikTok' : 'Instagram'}` : ''}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: '#AAA' }}>
           <span>Actualizado {haceCuanto(data.actualizado)}</span>
+          {posts.length > 0 && <button className="btn-ghost" style={{ fontSize: 11.5, padding: '5px 12px' }} onClick={() => descargarCSV(posts, t, engagement, nombre + (vista !== 'total' ? ` (${nombreRed(vista)})` : ''))} title="Descargar los videos y sus métricas para abrir en Excel">⬇ Descargar CSV</button>}
           {admin && <button className="btn-ghost" style={{ fontSize: 11.5, padding: '5px 12px' }} onClick={actualizarAhora} disabled={actualizando}>{actualizando ? 'Actualizando…' : '↻ Actualizar ahora'}</button>}
         </div>
       </div>

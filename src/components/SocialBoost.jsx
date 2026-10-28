@@ -626,7 +626,7 @@ function CancionPage({ slot, semanaId, inicio, cuentas, onBack, onChanged }) {
       </div>
 
       {/* Métricas del reporte de Tokchart de la canción + qué cuenta rindió mejor */}
-      <MetricasCampana key={slot.cancion_id} cancionId={slot.cancion_id} titulo="Métricas de la canción" admin onData={setMetricas} />
+      <MetricasCampana key={slot.cancion_id} cancionId={slot.cancion_id} nombre={info?.cancion} titulo="Métricas de la canción" admin onData={setMetricas} />
       <AnalisisCuentas metricas={metricas} videos={videos} cuentas={cuentas} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>

@@ -84,7 +84,7 @@ export default function VistaSocialBoost({ isMobile }) {
           </div>
         </div>
 
-        <MetricasCampana key={abierta.cancion_id} cancionId={abierta.cancion_id} titulo="Métricas de la canción" />
+        <MetricasCampana key={abierta.cancion_id} cancionId={abierta.cancion_id} nombre={abierta.cancion} titulo="Métricas de la canción" />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 500 }}>Videos</div>
