@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import sql from '../lib/db'
 import Modal from './Modal'
 import ImportarCSV from './ImportarCSV'
+import ActualizarSeguidores from './ActualizarSeguidores'
 
 const TIPO_COLORS = {
   Bailes:    { bg: '#EEEDFE', color: '#3C3489' },
@@ -530,6 +531,7 @@ export default function Roster() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {!isMobile && <ImportarCSV onDone={fetchInfluencers} />}
+          <ActualizarSeguidores influencers={influencers} onDone={fetchInfluencers} isMobile={isMobile} />
           <button className="btn-red" onClick={openNew} style={{ fontSize: isMobile ? 13 : 14, padding: isMobile ? '7px 12px' : undefined }}>
             {isMobile ? '+ Nuevo' : '+ Nuevo influencer'}
           </button>
