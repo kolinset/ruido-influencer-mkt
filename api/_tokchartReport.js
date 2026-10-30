@@ -40,6 +40,11 @@ const COLUMNAS = { followers: 'followers', posted: 'fecha', uploaded: 'fecha', e
 export function parseReport(html) {
   // ── Tabla de videos: títulos de columna, filas <tr data-id> y fila "Total" del pie ──
   const ini = html.indexOf('<table'), fin = html.indexOf('</table>', ini)
+  const actualizado = (texto(html).match(/(?:Last updated:|Updated)\s*(.+?\bago)/i) || [])[1] || ''
+  // Reporte recién creado, todavía sin videos: no hay tabla, se devuelve todo en cero
+  if ((ini < 0 || fin < 0) && /campaign report/i.test(html) && !/data-id="\d+"/.test(html)) {
+    return { views: 0, likes: 0, comments: 0, saves: 0, shares: 0, engagement: null, posts: [], totalPosts: 0, tokchart_actualizado: actualizado }
+  }
   if (ini < 0 || fin < 0) throw new Error('No se encontró la tabla de videos en el reporte (¿cambió el diseño de Tokchart?)')
   const tabla = html.slice(ini, fin)
   const ths = [...(tabla.match(/<thead[\s\S]*?<\/thead>/) || [''])[0].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)]
@@ -73,12 +78,11 @@ export function parseReport(html) {
   // ── Totales: fila "Total · N posts" al pie de la tabla ──
   const pie = celdasDe((tabla.match(/<tfoot[\s\S]*?<\/tfoot>/) || [''])[0])
   const total = nombre => { const i = col(nombre); const t = i >= 0 && pie[i] != null ? texto(pie[i]) : ''; return t ? entero(t) : null }
-  const views = total('views')
+  const views = total('views') ?? (posts.length ? null : 0)
   if (views == null) throw new Error('No se encontraron las views en el reporte (¿cambió el diseño de Tokchart?)')
   const engTxt = col('engagement') >= 0 ? texto(pie[col('engagement')] || '') : ''
   const totalPosts = entero((texto(pie.join(' ')).match(/Total\s*·\s*([\d,]+)\s*posts?/i) || [])[1])
 
-  const actualizado = (texto(html).match(/(?:Last updated:|Updated)\s*(.+?\bago)/i) || [])[1] || ''
   return {
     views, likes: total('likes'), comments: total('comments'), saves: total('saves'), shares: total('shares'),
     engagement: engTxt ? decimal(engTxt) : null, posts, totalPosts, tokchart_actualizado: actualizado,
