@@ -28,6 +28,7 @@ import { parseTikTok } from '../lib/links'
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
+  Programada: { bg: '#EEEDFE', color: '#3C3489' },
   Pausada:   { bg: '#FAEEDA', color: '#633806' },
   Cerrada:   { bg: '#E6F1FB', color: '#0C447C' },
   Cancelada: { bg: '#FCEBEB', color: '#791F1F' },

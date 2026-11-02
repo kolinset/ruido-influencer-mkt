@@ -74,8 +74,21 @@ async function historial(fecha, filas) {
   }
 }
 
+// Campañas "Programada" cuya fecha de inicio ya llegó: pasan solas a "Activa" (lo hace el envío diario)
+async function activarProgramadas(fecha) {
+  try {
+    return (await pool.query(`
+      UPDATE campaigns SET estado = 'Activa'
+      WHERE estado = 'Programada' AND NULLIF(fecha_inicio::text, '') IS NOT NULL AND left(fecha_inicio::text, 10) <= $1
+      RETURNING nombre`, [fecha])).rows.map(r => r.nombre)
+  } catch (e) {
+    console.error('resumen activar programadas:', e.message)
+    return []
+  }
+}
+
 // ───── Datos ─────
-async function armarResumen() {
+async function armarResumen(activadas = []) {
   const fecha = hoyChile()
 
   // Campañas activas
@@ -187,7 +200,7 @@ async function armarResumen() {
     })
 
   const sb = { inicio, canciones, vidsMes, vidsSem, maxMes: MAX_MES_SB, totalSemana: TOTAL_SEMANA }
-  return { fecha, campanas, sb, intro: introDelDia(campanas, sb) }
+  return { fecha, campanas, sb, activadas, intro: introDelDia(campanas, sb) }
 }
 
 // ───── Análisis en palabras (para leer rápido desde el teléfono) ─────
@@ -342,6 +355,7 @@ function htmlResumen(r, appUrl) {
         <div style="background:#0E0F12;border-radius:16px;padding:18px 18px;color:#F4E6D6;font-size:15px;line-height:1.55">
           <div style="font-size:13px;color:#E58A3E;font-weight:600;margin-bottom:6px">Buenos días ☀️</div>
           ${r.intro}
+          ${r.activadas?.length ? `<div style="margin-top:8px">Hoy ${r.activadas.length === 1 ? 'partió' : 'partieron'}: <b>${r.activadas.map(esc).join(', ')}</b> (pasaron de Programada a Activa).</div>` : ''}
         </div>
       </td></tr>
 
@@ -403,7 +417,9 @@ export default async function handler(req, res) {
 
   try {
     const appUrl = `https://${req.headers['x-forwarded-host'] || req.headers.host}`
-    const resumen = await armarResumen()
+    // Solo el envío automático cambia estados (ver la vista previa no toca nada)
+    const activadas = esCron ? await activarProgramadas(hoyChile()) : []
+    const resumen = await armarResumen(activadas)
     const html = htmlResumen(resumen, appUrl)
     if (preview && !esCron) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')

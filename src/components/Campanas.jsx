@@ -62,6 +62,7 @@ const ESTADO_INF_COLORS = {
 
 const ESTADO_CAMP_COLORS = {
   Activa:    { bg: '#EAF3DE', color: '#27500A' },
+  Programada: { bg: '#EEEDFE', color: '#3C3489' },
   Pausada:   { bg: '#FAEEDA', color: '#633806' },
   Cerrada:   { bg: '#E6F1FB', color: '#0C447C' },
   Cancelada: { bg: '#FCEBEB', color: '#791F1F' },
@@ -78,9 +79,20 @@ const AV_COLORS = [
   { bg: '#F2EDE6', color: '#C4501A' },
 ]
 
-const TABS_LISTA = ['Activas', 'Pausadas', 'Cerradas', 'Canceladas', 'Todas']
+const TABS_LISTA = ['Activas', 'Programadas', 'Pausadas', 'Cerradas', 'Canceladas', 'Todas']
 const TABS_DETALLE = ['influencers', 'pagos', 'reportes']
 const PLATAFORMAS = ['Ambas', 'TikTok', 'Instagram']
+
+// Día de inicio de una campaña programada: "15 nov · en 13 días"
+function fechaParte(f) {
+  const m = String(f || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const dias = Math.round((d - hoy) / 86400000)
+  const fecha = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }).replace('.', '')
+  return { fecha, falta: dias > 1 ? `en ${dias} días` : dias === 1 ? 'mañana' : dias === 0 ? 'hoy' : `hace ${-dias} días` }
+}
 
 // Fecha de creación de la campaña y cuánto tiempo lleva: "12 oct 2026", "hace 21 días"
 function fechaCreada(f) {
@@ -716,7 +728,7 @@ export default function Campanas({ initialCamp = null }) {
     setSavingCamp(true)
     try {
       await sql`
-        INSERT INTO campaigns (nombre, cliente, client_id, budget, budget_total, moneda, brief, plataforma, share_token, artista, cancion, fecha_inicio, fecha_termino, reporte_url_tt, reporte_url_ig, tipo, contenidos_count, views_logradas, views_min, views_max, service_id, utilizable_pct, solicitado_por, es_legacy)
+        INSERT INTO campaigns (nombre, cliente, client_id, budget, budget_total, moneda, brief, plataforma, share_token, artista, cancion, fecha_inicio, fecha_termino, reporte_url_tt, reporte_url_ig, tipo, contenidos_count, views_logradas, views_min, views_max, service_id, utilizable_pct, solicitado_por, es_legacy, estado)
         VALUES (
           ${campForm.nombre},
           ${campForm.client_id ? (clientsList.find(c => c.id === campForm.client_id)?.nombre || '') : campForm.cliente},
@@ -736,7 +748,8 @@ export default function Campanas({ initialCamp = null }) {
           ${campForm.service_id ? parseInt(campForm.service_id) : null},
           ${campForm.utilizable_pct ? parseFloat(campForm.utilizable_pct) : 100},
           ${campForm.solicitado_por || ''},
-          false
+          false,
+          ${campForm.fecha_inicio && campForm.fecha_inicio > new Date().toLocaleDateString('en-CA') ? 'Programada' : 'Activa'}
         )
       `
       setModalNewCamp(false)
@@ -1288,6 +1301,7 @@ export default function Campanas({ initialCamp = null }) {
               {fechaCreada(currentCamp.created_at) && (
                 <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 3 }}>
                   {currentCamp.service_nombre ? `${currentCamp.service_nombre} · ` : ''}Creada el {fechaCreada(currentCamp.created_at).fecha} · {fechaCreada(currentCamp.created_at).hace}
+                  {currentCamp.estado === 'Programada' && fechaParte(currentCamp.fecha_inicio) && <span style={{ color: '#3C3489', fontWeight: 500 }}> · Parte el {fechaParte(currentCamp.fecha_inicio).fecha} ({fechaParte(currentCamp.fecha_inicio).falta}), se activa sola ese día</span>}
                 </div>
               )}
             </div>
@@ -1685,7 +1699,7 @@ export default function Campanas({ initialCamp = null }) {
         <Modal open={changeEstadoModal} onClose={() => setChangeEstadoModal(false)} title="Cambiar estado">
           <p style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>Estado actual: <strong>{currentCamp.estado}</strong></p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            {['Activa', 'Pausada', 'Cerrada', 'Cancelada'].filter(e => e !== currentCamp.estado).map(estado => {
+            {['Programada', 'Activa', 'Pausada', 'Cerrada', 'Cancelada'].filter(e => e !== currentCamp.estado).map(estado => {
               const ec = ESTADO_CAMP_COLORS[estado]
               return (
                 <button key={estado} onClick={() => updateEstado(currentCamp.id, estado)}
@@ -1695,7 +1709,7 @@ export default function Campanas({ initialCamp = null }) {
                 >
                   <span>{estado}</span>
                   <span style={{ fontSize: 11, background: ec.bg, color: ec.color, padding: '2px 9px', borderRadius: 20 }}>
-                    {estado === 'Activa' ? 'En curso' : estado === 'Pausada' ? 'Pausa temporal' : estado === 'Cerrada' ? 'Finalizada' : 'No ejecutada'}
+                    {estado === 'Programada' ? 'Aprobada, parte pronto' : estado === 'Activa' ? 'En curso' : estado === 'Pausada' ? 'Pausa temporal' : estado === 'Cerrada' ? 'Finalizada' : 'No ejecutada'}
                   </span>
                 </button>
               )
@@ -1982,10 +1996,11 @@ export default function Campanas({ initialCamp = null }) {
                 </div>
                 {(() => {
                   const cr = fechaCreada(camp.created_at)
-                  return (camp.service_nombre || cr) && (
+                  return (camp.service_nombre || cr || camp.estado === 'Programada') && (
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, fontSize: 11 }}>
                       {camp.service_nombre && camp.service_nombre !== camp.tipo && <span style={{ background: 'rgba(196, 80, 26, 0.10)', color: '#C4501A', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>{camp.service_nombre}</span>}
                       {cr && <span style={{ color: '#AAA' }} title={`Creada el ${cr.fecha}`}>Creada {cr.fecha} · {cr.hace}</span>}
+                      {camp.estado === 'Programada' && (() => { const fp = fechaParte(camp.fecha_inicio); return <span style={{ color: '#3C3489', fontWeight: 500 }}>{fp ? `Parte el ${fp.fecha} · ${fp.falta}` : 'Sin fecha de inicio'}</span> })()}
                     </div>
                   )
                 })()}
