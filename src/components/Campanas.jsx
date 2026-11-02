@@ -82,6 +82,16 @@ const TABS_LISTA = ['Activas', 'Pausadas', 'Cerradas', 'Canceladas', 'Todas']
 const TABS_DETALLE = ['influencers', 'pagos', 'reportes']
 const PLATAFORMAS = ['Ambas', 'TikTok', 'Instagram']
 
+// Fecha de creación de la campaña y cuánto tiempo lleva: "12 oct 2026", "hace 21 días"
+function fechaCreada(f) {
+  const d = f ? new Date(f) : null
+  if (!d || isNaN(d)) return null
+  const fecha = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
+  const dias = Math.floor((Date.now() - d.getTime()) / 86400000)
+  const hace = dias <= 0 ? 'hoy' : dias === 1 ? 'hace 1 día' : dias < 60 ? `hace ${dias} días` : dias < 730 ? `hace ${Math.floor(dias / 30)} meses` : `hace ${Math.floor(dias / 365)} años`
+  return { fecha, hace, dias }
+}
+
 function fmtSeg(n) {
   n = Number(n)
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
@@ -526,6 +536,7 @@ export default function Campanas({ initialCamp = null }) {
   const [categoriasList, setCategoriasList] = useState([])
   const [tab, setTab] = useState('Activas')
   const [filterAnio, setFilterAnio] = useState('')
+  const [filterServicio, setFilterServicio] = useState('')
   const [sortOrder, setSortOrder] = useState('reciente')
   const [campTab, setCampTab] = useState('influencers')
 
@@ -1153,7 +1164,8 @@ export default function Campanas({ initialCamp = null }) {
     .filter(c => {
       const matchEstado = tab === 'Todas' || c.estado === tab.slice(0, -1)
       const matchAnio = !filterAnio || (c.created_at && new Date(c.created_at).getFullYear() === parseInt(filterAnio))
-      return matchEstado && matchAnio
+      const matchServicio = !filterServicio || (c.service_nombre || 'Sin servicio') === filterServicio
+      return matchEstado && matchAnio && matchServicio
     })
     .sort((a, b) => sortOrder === 'reciente'
       ? new Date(b.created_at) - new Date(a.created_at)
@@ -1273,6 +1285,11 @@ export default function Campanas({ initialCamp = null }) {
                 {currentCamp.client_nombre && <span style={{ fontSize: 12, color: clientColor, fontWeight: 500 }}>{currentCamp.client_nombre}</span>}
                 {currentCamp.artista && <span style={{ fontSize: 12, color: '#888' }}>· {currentCamp.artista}{currentCamp.cancion ? ` — "${currentCamp.cancion}"` : ''}</span>}
               </div>
+              {fechaCreada(currentCamp.created_at) && (
+                <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 3 }}>
+                  {currentCamp.service_nombre ? `${currentCamp.service_nombre} · ` : ''}Creada el {fechaCreada(currentCamp.created_at).fecha} · {fechaCreada(currentCamp.created_at).hace}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', flexWrap: 'wrap', gap: 6, flexShrink: 0, alignItems: isMobile ? 'center' : 'flex-end' }}>
               {hasReporteTT && (
@@ -1903,8 +1920,34 @@ export default function Campanas({ initialCamp = null }) {
         </select>
       </div>
 
+      {(() => {
+        const base = camps.filter(c => (tab === 'Todas' || c.estado === tab.slice(0, -1)) && (!filterAnio || (c.created_at && new Date(c.created_at).getFullYear() === parseInt(filterAnio))))
+        const conteo = {}
+        camps.forEach(c => { conteo[c.service_nombre || 'Sin servicio'] = 0 })
+        base.forEach(c => { conteo[c.service_nombre || 'Sin servicio']++ })
+        const servicios = Object.keys(conteo).sort((a, b) => a === 'Sin servicio' ? 1 : b === 'Sin servicio' ? -1 : a.localeCompare(b))
+        if (servicios.length < 2) return null
+        const chip = (valor, label, n) => {
+          const activo = filterServicio === valor
+          return (
+            <button key={valor || 'todos'} onClick={() => setFilterServicio(valor)} style={{
+              fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 12.5, padding: '6px 12px', borderRadius: 20,
+              border: activo ? '1px solid #C4501A' : '0.5px solid #E5E5E2', background: activo ? 'rgba(196, 80, 26, 0.10)' : '#fff',
+              color: activo ? '#C4501A' : (n ? '#555' : '#BBB'), fontWeight: activo ? 500 : 400,
+            }}>{label} <span style={{ fontSize: 10.5, color: activo ? '#C4501A' : '#AAA' }}>{n}</span></button>
+          )
+        }
+        return (
+          <div className="tabs-scroll" style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', flexWrap: isMobile ? 'nowrap' : 'wrap', paddingBottom: 2 }}>
+            <span style={{ fontSize: 11.5, color: '#AAA', alignSelf: 'center', marginRight: 2 }}>Servicio</span>
+            {chip('', 'Todos', base.length)}
+            {servicios.map(sv => chip(sv, sv, conteo[sv]))}
+          </div>
+        )
+      })()}
+
       {filteredCamps.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', color: '#AAA', fontSize: 13 }}>No hay campañas {tab !== 'Todas' ? tab.toLowerCase() : ''}.</div>
+        <div style={{ padding: 60, textAlign: 'center', color: '#AAA', fontSize: 13 }}>No hay campañas {tab !== 'Todas' ? tab.toLowerCase() : ''}{filterServicio ? ` de ${filterServicio}` : ''}.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filteredCamps.map(camp => {
@@ -1937,6 +1980,15 @@ export default function Campanas({ initialCamp = null }) {
                   {isEspecialCamp && <span style={{ fontSize: 10, background: '#1A1A1A', color: '#fff', padding: '1px 6px', borderRadius: 10 }}>{camp.tipo}</span>}
                   {!camp.artista && !isEspecialCamp && <span style={{ fontSize: 11, color: '#AAA' }}>{camp.plataforma || 'Ambas'}</span>}
                 </div>
+                {(() => {
+                  const cr = fechaCreada(camp.created_at)
+                  return (camp.service_nombre || cr) && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, fontSize: 11 }}>
+                      {camp.service_nombre && camp.service_nombre !== camp.tipo && <span style={{ background: 'rgba(196, 80, 26, 0.10)', color: '#C4501A', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>{camp.service_nombre}</span>}
+                      {cr && <span style={{ color: '#AAA' }} title={`Creada el ${cr.fecha}`}>Creada {cr.fecha} · {cr.hace}</span>}
+                    </div>
+                  )
+                })()}
                 <div style={{ display: 'flex', gap: 14, marginBottom: 4 }}>
                   {camp.tipo === 'Playlisting' ? (
                     <div><div style={{ fontSize: 10.5, color: '#AAA' }}>Spotify</div><div style={{ fontSize: 15, fontWeight: 500 }}>Playlisting</div></div>
