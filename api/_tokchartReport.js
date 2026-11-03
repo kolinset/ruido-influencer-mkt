@@ -76,16 +76,25 @@ export function parseReport(html) {
   }
 
   // ── Totales: fila "Total · N posts" al pie de la tabla ──
+  // Con un solo video Tokchart no pone esa fila: el total sale de los videos
+  const conPie = /<tfoot/.test(tabla)
   const pie = celdasDe((tabla.match(/<tfoot[\s\S]*?<\/tfoot>/) || [''])[0])
-  const total = nombre => { const i = col(nombre); const t = i >= 0 && pie[i] != null ? texto(pie[i]) : ''; return t ? entero(t) : null }
+  const sumaPosts = nombre => posts.some(p => p[nombre] != null) ? posts.reduce((s, p) => s + (p[nombre] || 0), 0) : null
+  const total = nombre => {
+    if (!conPie) return sumaPosts(nombre)
+    const i = col(nombre); const t = i >= 0 && pie[i] != null ? texto(pie[i]) : ''; return t ? entero(t) : null
+  }
   const views = total('views') ?? (posts.length ? null : 0)
   if (views == null) throw new Error('No se encontraron las views en el reporte (¿cambió el diseño de Tokchart?)')
   const engTxt = col('engagement') >= 0 ? texto(pie[col('engagement')] || '') : ''
+  const engPosts = posts.filter(p => p.engagement != null)
+  const engagement = conPie ? (engTxt ? decimal(engTxt) : null)
+    : engPosts.length ? engPosts.reduce((s, p) => s + p.engagement, 0) / engPosts.length : null
   const totalPosts = entero((texto(pie.join(' ')).match(/Total\s*·\s*([\d,]+)\s*posts?/i) || [])[1])
 
   return {
     views, likes: total('likes'), comments: total('comments'), saves: total('saves'), shares: total('shares'),
-    engagement: engTxt ? decimal(engTxt) : null, posts, totalPosts, tokchart_actualizado: actualizado,
+    engagement, posts, totalPosts, tokchart_actualizado: actualizado,
   }
 }
 
