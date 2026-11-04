@@ -20,7 +20,7 @@ CREATE TABLE campaign_influencers (id serial PRIMARY KEY, campaign_id uuid REFER
   costo integer DEFAULT 0, piezas integer DEFAULT 1, estado text, notas text, video_link_tt text DEFAULT '', video_link_ig text DEFAULT '', boostcode text, estado_pago text,
   link_boleta text, tipo_facturacion text DEFAULT 'sin_recargo', created_at timestamptz DEFAULT now());
 CREATE TABLE posts (id serial PRIMARY KEY, campaign_id uuid, influencer_id integer, plataforma text, url text, fecha_publicacion date, descripcion text);
-CREATE TABLE campaign_metrics (campaign_id uuid, plataforma text, views bigint, likes bigint, comments bigint, saves bigint, shares bigint, engagement numeric, fetched_at timestamptz);
+CREATE TABLE campaign_metrics (campaign_id uuid, plataforma text, views bigint, likes bigint, comments bigint, saves bigint, shares bigint, engagement numeric, posts jsonb DEFAULT '[]', fetched_at timestamptz);
 ` + readFileSync(new URL('../supabase/campaign_links.sql', import.meta.url), 'utf8')
   + readFileSync(new URL('../supabase/propuestas_agentes.sql', import.meta.url), 'utf8')
 
@@ -89,7 +89,7 @@ describe('lectura', () => {
     expect(r2.influencers.map(i => i.nombre)).toEqual(['Fer'])
     const r3 = await ok('buscar_influencers', { categoria: 'urbana' })
     expect(r3.influencers.map(i => i.nombre)).toEqual(['Cami', 'Benja'])
-    expect(r3.influencers[0]).toMatchObject({ campanas_previas: 1, costo_promedio: 300000 })
+    expect(r3.influencers[0]).toMatchObject({ campanas_previas: 1, costo_promedio: Math.round(300000 / (1 - 0.1525)) }) // con retención
     const r4 = await ok('buscar_influencers', { categoria: 'trap' })
     expect(r4.categorias_disponibles).toContain('Humor')
   })
@@ -202,5 +202,43 @@ describe('estado', () => {
     await db.query(`INSERT INTO campaigns (nombre) VALUES ('[Nano Blast] "X" - "Y"')`) // alguien la creó a mano mientras tanto
     await expect(aprobar(r.propuesta_id)).rejects.toThrow(/Ya existe/)
     expect((await pendientes()).map(p => p.id)).toContain(r.propuesta_id)
+  })
+})
+
+describe('brief y costo por view', () => {
+  const C_OLD = '55555555-5555-5555-5555-555555555555'
+  beforeEach(async () => {
+    await db.query(`INSERT INTO campaigns (id, nombre, client_id, budget, moneda, tipo, estado, brief) VALUES ($1, 'Campaña vieja', $2, 900000, 'CLP', 'Influencer MKT', 'Cerrada', 'Baile con la canción, tono divertido, 1 TikTok por creador')`, [C_OLD, CL])
+    await db.query(`UPDATE campaigns SET brief = 'Trend de baile para el estreno de Faros' WHERE id = $1`, [C_IMKT])
+    // Cami: $200.000 sin recargo, su video por link; Fer: $100.000 con factura (IVA), su video por @handle; Benja: sin costo
+    await db.query(`INSERT INTO campaign_influencers (campaign_id, influencer_id, costo, estado, video_link_tt, tipo_facturacion) VALUES
+      ($1, 1, 200000, 'Publicado', 'https://www.tiktok.com/@cami/video/777', 'sin_recargo'),
+      ($1, 3, 100000, 'Publicado', '', 'factura_iva'),
+      ($1, 2, 0, 'Publicado', '', 'sin_recargo')`, [C_OLD])
+    await db.query(`INSERT INTO campaign_metrics (campaign_id, plataforma, views, posts, fetched_at) VALUES ($1, 'tiktok', 900000, $2, now())`, [C_OLD,
+      JSON.stringify([{ video_id: '777', link: 'https://www.tiktok.com/@cami/video/777', handle: 'cami', views: 400000 },
+                      { video_id: '888', link: 'https://www.tiktok.com/@fer/video/888', handle: 'fer', views: 50000 },
+                      { video_id: '999', link: 'https://www.tiktok.com/@benja/video/999', handle: 'benja', views: 450000 }])])
+  })
+  it('ver_campana trae el brief completo', async () => {
+    const r = await ok('ver_campana', { campana_id: C_IMKT })
+    expect(r.brief).toBe('Trend de baile para el estreno de Faros')
+  })
+  it('historial_influencer: CPV con impuestos y extracto del brief de cada campaña', async () => {
+    const r = await ok('historial_influencer', { influencer_id: '3' })
+    expect(r.campanas).toHaveLength(1)
+    expect(r.campanas[0]).toMatchObject({ campana: 'Campaña vieja', costo: 119000, views: 50000, videos_medidos: 1 })
+    expect(r.campanas[0].cpv).toBeCloseTo(2.38, 2)
+    expect(r.campanas[0].brief).toMatch(/Baile con la canción/)
+    expect(r.cpv_promedio).toBeCloseTo(2.38, 2)
+  })
+  it('buscar_influencers ordena por CPV (sin historial al final) y por views', async () => {
+    const r = await ok('buscar_influencers', { ordenar_por: 'cpv' })
+    expect(r.influencers.map(i => i.nombre)).toEqual(['Cami', 'Fer', 'Benja'])
+    expect(r.influencers[0].cpv_promedio).toBeCloseTo(0.5, 2) // 200.000 / 400.000
+    expect(r.influencers[2].cpv_promedio).toBeNull()             // Benja: costo 0 → sin CPV
+    const v = await ok('buscar_influencers', { ordenar_por: 'views' })
+    expect(v.influencers[0].nombre).toBe('Benja')
+    expect(v.influencers[0].views_promedio_por_video).toBe(450000)
   })
 })

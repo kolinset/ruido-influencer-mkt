@@ -75,12 +75,14 @@ export const HERRAMIENTAS = [
   { name: 'listar_servicios', description: 'Servicios activos con su % utilizable (lo que se puede gastar del budget; el resto es margen de Kolinset).', inputSchema: S({}) },
   { name: 'listar_campanas', description: 'Lista campañas con filtros. Estados: Programada, Activa, Pausada, Cerrada (finalizada), Cancelada.',
     inputSchema: S({ estado: { type: 'string', enum: ['Programada', 'Activa', 'Pausada', 'Cerrada', 'Cancelada', 'Abiertas'] }, tipo: { type: 'string', enum: TIPOS }, cliente_id: { type: 'string' }, texto: { type: 'string', description: 'Parte del nombre, artista o canción.' }, limite: { type: 'integer', minimum: 1, maximum: 100 } }) },
-  { name: 'ver_campana', description: 'Detalle de una campaña: datos, brief, influencers (estado, costo, links de video, pago), budget utilizable/usado/restante, links cargados y métricas.',
+  { name: 'ver_campana', description: 'Detalle de una campaña: datos, brief completo (lo que se manda o se mandó a los influencers; léelo antes de armar una lista), influencers (estado, costo, links de video, pago), budget utilizable/usado/restante, links cargados y métricas.',
     inputSchema: S({ campana_id: { type: 'string' } }, ['campana_id']) },
   { name: 'avance_campanas', description: 'Avance de todas las campañas abiertas según su tipo: Influencer MKT (quién falta por publicar), Clipping (views vs meta), Nano Blast (links cargados), Playlisting (recordar pedir números de Spotify for Artists). Marca cuáles están listas para finalizar.',
     inputSchema: S({}) },
-  { name: 'buscar_influencers', description: 'Busca en el roster (solo activos): por categoría, red, rango de seguidores o nombre. Incluye cuántas campañas hizo antes y su costo promedio, para armar listas y negociar.',
-    inputSchema: S({ categoria: { type: 'string' }, plataforma: { type: 'string', enum: ['TikTok', 'Instagram'], description: 'Red para el filtro de seguidores (por defecto TikTok).' }, seguidores_min: { type: 'integer', minimum: 0 }, seguidores_max: { type: 'integer', minimum: 0 }, texto: { type: 'string' }, excluir_campana_id: { type: 'string', description: 'No mostrar los que ya están en esta campaña.' }, limite: { type: 'integer', minimum: 1, maximum: 60 } }) },
+  { name: 'buscar_influencers', description: 'Busca en el roster (solo activos): por categoría, red, rango de seguidores o nombre. Incluye su historial medido en campañas anteriores: costo por view (CPV, en CLP, con retención/IVA incluidos), views promedio por video y cuántas campañas se midieron. Puedes ordenar por CPV para armar listas más eficientes.',
+    inputSchema: S({ categoria: { type: 'string' }, plataforma: { type: 'string', enum: ['TikTok', 'Instagram'], description: 'Red para el filtro de seguidores (por defecto TikTok).' }, seguidores_min: { type: 'integer', minimum: 0 }, seguidores_max: { type: 'integer', minimum: 0 }, texto: { type: 'string' }, excluir_campana_id: { type: 'string', description: 'No mostrar los que ya están en esta campaña.' }, ordenar_por: { type: 'string', enum: ['seguidores', 'cpv', 'views'], description: 'seguidores (por defecto), cpv (más barato por view primero; sin historial al final) o views (más views promedio por video primero).' }, limite: { type: 'integer', minimum: 1, maximum: 60 } }) },
+  { name: 'historial_influencer', description: 'Historial de un influencer en campañas anteriores: en qué campañas estuvo, de qué tipo y de qué trataba cada una (extracto del brief), cuánto costó, cuántas views logró y su costo por view. Úsalo para decidir si calza con una campaña nueva.',
+    inputSchema: S({ influencer_id: { type: 'string' } }, ['influencer_id']) },
   { name: 'proponer_crear_campana', description: 'PROPONE crear una campaña en ROSTER (se crea al aprobarla). Nombre automático: [Tipo] "Artista" - "Canción". Clipping: $1.000.000 neto y meta 1M–3M views por defecto. Nano Blast: $1.000.000 neto. Playlisting: con streams de la tabla sale el budget. El % utilizable lo pone el servicio.',
     inputSchema: S({ tipo: { type: 'string', enum: TIPOS }, artista: { type: 'string' }, cancion: { type: 'string' }, cliente_id: { type: 'string' }, solicitado_por: { type: 'string', description: 'Persona del cliente que lo pidió.' }, budget: { type: 'number', minimum: 1, description: 'Budget total neto (lo que cobra la agencia).' }, moneda: { type: 'string', enum: ['CLP', 'USD'] }, plataforma: { type: 'string', enum: ['TikTok', 'Instagram', 'Ambas'] }, brief: { type: 'string' }, fecha_inicio: { type: 'string', description: 'AAAA-MM-DD' }, fecha_termino: { type: 'string', description: 'AAAA-MM-DD' }, views_min: { type: 'integer', minimum: 0 }, views_max: { type: 'integer', minimum: 0 }, streams: { type: 'integer', minimum: 1, description: 'Solo Playlisting.' }, motivo },
       ['tipo', 'artista', 'cancion', 'cliente_id', 'motivo']) },
@@ -149,6 +151,52 @@ function avanceDe(c, infs, links, hoy) {
     texto: 'Sin métricas automáticas: pedir al cliente los números de Spotify for Artists' + (dias !== null ? ` (lleva ${dias} días)` : '') }
 }
 
+
+// ── Historial medido de influencers (costo por view) ────────────────────────
+// Cruza lo que se le pagó a cada influencer en cada campaña con las views de sus
+// videos en el reporte de Tokchart de esa campaña (campaign_metrics.posts).
+// Un video se asigna al influencer por su link (ID de TikTok / código de reel) o por su @usuario.
+const sinArroba = h => String(h || '').trim().replace(/^@/, '').toLowerCase()
+const reelDe = u => (String(u || '').match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || [])[1] || ''
+const ttIdDe = u => (String(u || '').match(/tiktok\.com\/@[^/]+\/(?:video|photo)\/(\d+)/) || [])[1] || ''
+
+export async function historialMedido(db, influencerIds = null) {
+  const p = [], w = []
+  if (influencerIds) { p.push(influencerIds.map(String)); w.push(`ci.influencer_id::text = ANY($1)`) }
+  const filasCi = await filas(db, `SELECT ci.influencer_id, ci.costo, ci.tipo_facturacion, ci.piezas, ci.estado, ci.video_link_tt, ci.video_link_ig,
+      c.id AS campaign_id, c.nombre, c.tipo, c.moneda, c.created_at, c.brief, i.tt_usuario, i.ig_usuario
+    FROM campaign_influencers ci JOIN campaigns c ON c.id = ci.campaign_id JOIN influencers i ON i.id = ci.influencer_id
+    ${w.length ? 'WHERE ' + w.join(' AND ') : ''} ORDER BY c.created_at DESC`, p)
+  const campIds = [...new Set(filasCi.map(r => r.campaign_id))]
+  const mets = campIds.length ? await filas(db, `SELECT campaign_id, plataforma, posts FROM campaign_metrics WHERE campaign_id = ANY($1)`, [campIds]) : []
+  const postsDe = new Map()
+  for (const m of mets) {
+    const ps = typeof m.posts === 'string' ? JSON.parse(m.posts || '[]') : (m.posts || [])
+    const k = String(m.campaign_id); postsDe.set(k, [...(postsDe.get(k) || []), ...ps.map(x => ({ ...x, plataforma: m.plataforma }))])
+  }
+  return filasCi.map(r => {
+    const ps = postsDe.get(String(r.campaign_id)) || []
+    const tt = ttIdDe(r.video_link_tt), reel = reelDe(r.video_link_ig)
+    const handles = new Set([sinArroba(r.tt_usuario), sinArroba(r.ig_usuario)].filter(Boolean))
+    const suyos = ps.filter(x => (tt && String(x.video_id) === tt) || (reel && reelDe(x.link) === reel) || (x.handle && handles.has(sinArroba(x.handle))))
+    const views = suyos.reduce((a, x) => a + num(x.views), 0)
+    const costo = calcCosto(r.costo, r.tipo_facturacion)
+    return { influencer_id: r.influencer_id, campaign_id: r.campaign_id, campana: r.nombre, tipo: r.tipo || 'Influencer MKT', moneda: r.moneda || 'CLP',
+      fecha: r.created_at, estado: r.estado, piezas: num(r.piezas), costo, videos_medidos: suyos.length, views,
+      cpv: costo > 0 && views > 0 ? costo / views : null, brief: r.brief || '' }
+  })
+}
+function resumenHistorial(h) {
+  const medidas = h.filter(x => x.cpv != null && x.moneda === 'CLP')
+  const costo = medidas.reduce((a, x) => a + x.costo, 0), viewsPagadas = medidas.reduce((a, x) => a + x.views, 0)
+  const conVideos = h.filter(x => x.videos_medidos > 0)
+  const views = conVideos.reduce((a, x) => a + x.views, 0), videos = conVideos.reduce((a, x) => a + x.videos_medidos, 0)
+  return { campanas_previas: h.length, campanas_medidas: medidas.length,
+    cpv_promedio: viewsPagadas > 0 ? Math.round(costo / viewsPagadas * 100) / 100 : null,
+    views_promedio_por_video: videos > 0 ? Math.round(views / videos) : null,
+    costo_promedio: h.filter(x => x.costo > 0).length ? Math.round(h.filter(x => x.costo > 0).reduce((a, x) => a + x.costo, 0) / h.filter(x => x.costo > 0).length) : null }
+}
+
 // ── Ejecución ───────────────────────────────────────────────────────────────
 export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = hoyChile(), expandTikTok = async () => null } = {}) {
   switch (nombre) {
@@ -183,7 +231,7 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
       const pct = c.utilizable_pct != null ? num(c.utilizable_pct) : 100
       const utilizable = Math.round(num(c.budget) * pct / 100)
       const usado = infs.reduce((s, i) => s + calcCosto(i.costo, i.tipo_facturacion), 0)
-      return { ...resumenCampana(c), solicitado_por: c.solicitado_por || null, brief: c.brief || null,
+      return { ...resumenCampana(c), solicitado_por: c.solicitado_por || null, brief: c.brief || null, brief_nota: c.brief ? undefined : 'Esta campaña aún no tiene brief en ROSTER (pestaña Brief).',
         budget_detalle: { utilizable_pct: pct, utilizable, usado_en_influencers: usado, restante: utilizable - usado, texto: `Utilizable ${plata(utilizable, c.moneda)} (${pct}%), usado ${plata(usado, c.moneda)}, quedan ${plata(utilizable - usado, c.moneda)}` },
         influencers: infs.map(i => ({ ...i, costo: num(i.costo), costo_con_impuestos: calcCosto(i.costo, i.tipo_facturacion) })),
         links_cargados: nLinks, views_logradas: num(c.views_logradas), views_min: num(c.views_min), views_max: num(c.views_max),
@@ -201,10 +249,7 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
 
     case 'buscar_influencers': {
       const plat = a.plataforma === 'Instagram' ? 'ig' : 'tt'
-      let rs = await filas(db, `SELECT i.id, i.nombre, i.tt_usuario, i.tt_seguidores, i.ig_usuario, i.ig_seguidores, i.tipos_contenido,
-          (SELECT count(*) FROM campaign_influencers ci WHERE ci.influencer_id = i.id) AS campanas_previas,
-          (SELECT round(avg(ci.costo)) FROM campaign_influencers ci WHERE ci.influencer_id = i.id AND ci.costo > 0) AS costo_promedio
-        FROM influencers i WHERE i.estado = 'Activo'`)
+      let rs = await filas(db, `SELECT i.id, i.nombre, i.tt_usuario, i.tt_seguidores, i.ig_usuario, i.ig_seguidores, i.tipos_contenido FROM influencers i WHERE i.estado = 'Activo'`)
       const cat = a.categoria ? String(a.categoria).toLowerCase().trim() : null
       const txt = a.texto ? String(a.texto).toLowerCase().trim() : null
       let excluir = new Set()
@@ -217,11 +262,30 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
         if (cat && !cats(i).some(c => c.toLowerCase().includes(cat))) return false
         if (txt && ![i.nombre, i.tt_usuario, i.ig_usuario].some(v => String(v || '').toLowerCase().includes(txt))) return false
         return !excluir.has(String(i.id))
-      }).sort((x, y) => num(y[`${plat}_seguidores`]) - num(x[`${plat}_seguidores`]))
+      })
+      const hist = rs.length ? await historialMedido(db, rs.map(i => i.id)) : []
+      const porInf = new Map()
+      for (const h of hist) { const k = String(h.influencer_id); porInf.set(k, [...(porInf.get(k) || []), h]) }
+      let out = rs.map(i => ({ id: i.id, nombre: i.nombre, tiktok: i.tt_usuario || null, tt_seguidores: num(i.tt_seguidores), instagram: i.ig_usuario || null, ig_seguidores: num(i.ig_seguidores), categorias: cats(i), ...resumenHistorial(porInf.get(String(i.id)) || []) }))
+      const orden = a.ordenar_por || 'seguidores'
+      const nul = (v, alto) => v == null ? (alto ? Infinity : -Infinity) : v
+      if (orden === 'cpv') out.sort((x, y) => nul(x.cpv_promedio, true) - nul(y.cpv_promedio, true))
+      else if (orden === 'views') out.sort((x, y) => nul(y.views_promedio_por_video, false) - nul(x.views_promedio_por_video, false))
+      else out.sort((x, y) => num(y[`${plat}_seguidores`]) - num(x[`${plat}_seguidores`]))
       const lim = Math.min(Math.max(Number(a.limite) || 25, 1), 60)
-      const out = { encontrados: rs.length, influencers: rs.slice(0, lim).map(i => ({ id: i.id, nombre: i.nombre, tiktok: i.tt_usuario || null, tt_seguidores: num(i.tt_seguidores), instagram: i.ig_usuario || null, ig_seguidores: num(i.ig_seguidores), categorias: cats(i), campanas_previas: num(i.campanas_previas), costo_promedio: i.costo_promedio == null ? null : num(i.costo_promedio) })) }
-      if (!rs.length && cat) out.categorias_disponibles = (await filas(db, `SELECT nombre FROM categorias_influencer WHERE activo = true ORDER BY nombre`)).map(r => r.nombre)
-      return out
+      const r = { encontrados: out.length, nota: 'cpv_promedio = lo que pagó Kolinset (con retención/IVA) dividido por las views medidas en reportes de Tokchart, solo campañas en CLP.', influencers: out.slice(0, lim) }
+      if (!out.length && cat) r.categorias_disponibles = (await filas(db, `SELECT nombre FROM categorias_influencer WHERE activo = true ORDER BY nombre`)).map(x => x.nombre)
+      return r
+    }
+
+    case 'historial_influencer': {
+      const inf = await fila(db, `SELECT id, nombre, tt_usuario, tt_seguidores, ig_usuario, ig_seguidores, estado, notas FROM influencers WHERE id::text = $1`, [String(a.influencer_id)])
+      if (!inf) falla('No existe ese influencer.')
+      const h = await historialMedido(db, [inf.id])
+      return { influencer: { ...inf, tt_seguidores: num(inf.tt_seguidores), ig_seguidores: num(inf.ig_seguidores) }, ...resumenHistorial(h),
+        campanas: h.map(x => ({ campana: x.campana, tipo: x.tipo, fecha: x.fecha, estado: x.estado, piezas: x.piezas, costo: x.costo, moneda: x.moneda,
+          views: x.views, videos_medidos: x.videos_medidos, cpv: x.cpv == null ? null : Math.round(x.cpv * 100) / 100,
+          brief: x.brief ? (x.brief.length > 300 ? x.brief.slice(0, 297) + '…' : x.brief) : null })) }
     }
 
     case 'proponer_crear_campana': {
