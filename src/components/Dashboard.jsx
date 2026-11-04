@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import supabase from '../lib/supabaseClient'
 import { resumenDiario } from '../lib/links'
+import PropuestasAgentes from './PropuestasAgentes'
 
 const RETENCION_HONORARIOS = 0.1525
 const IVA = 0.19
@@ -157,6 +158,9 @@ export default function Dashboard({ onNavigate }) {
         <KPI label="Alcance TikTok roster" value={fmtSeg(data.totalSegTT)} sub="seguidores TikTok acumulados" />
         <KPI label="Presupuesto administrado" value={fmtMoney(data.budgetTotal, 'CLP')} sub="en todas las campañas" />
       </div>
+
+      {/* Propuestas de los agentes de IA (solo aparece si hay pendientes) */}
+      <PropuestasAgentes />
 
       {/* Tarjeta pagos pendientes */}
       {data.countPendientes > 0 && (
