@@ -140,7 +140,7 @@ function avanceDe(c, infs, links, hoy) {
   }
   if (tipo === 'Nano Blast') {
     const ult = links.length ? links.reduce((a, x) => (x.created_at > a ? x.created_at : a), links[0].created_at) : null
-    const dias = ult ? Math.floor((Date.parse(hoy) - Date.parse(String(new Date(ult).toISOString()).slice(0, 10))) / 86400000) : null
+    const dias = ult ? Math.max(0, Math.floor((Date.parse(hoy) - Date.parse(hoyChile(new Date(ult)))) / 86400000)) : null // fecha en Chile, no en UTC
     return { ...base, links_cargados: links.length, dias_desde_ultimo_link: dias, listo_para_finalizar: null,
       texto: `${links.length} links cargados` + (dias !== null ? `, el último hace ${dias} día(s)` : '') + '. Se finaliza cuando la proveedora confirme que subieron todos.' }
   }

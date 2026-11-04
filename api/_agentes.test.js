@@ -93,6 +93,11 @@ describe('lectura', () => {
     const r4 = await ok('buscar_influencers', { categoria: 'trap' })
     expect(r4.categorias_disponibles).toContain('Humor')
   })
+  it('Nano Blast: un link cargado anoche en Chile (ya "mañana" en UTC) cuenta como hace 0 días, no -1', async () => {
+    await db.query(`INSERT INTO campaign_links (campaign_id, link_original, created_at) VALUES ($1, 'https://www.tiktok.com/@a/video/1', '2026-11-04T02:30:00Z')`, [C_NANO])
+    const r = await ok('avance_campanas')
+    expect(r.avance.find(a => a.id === C_NANO).dias_desde_ultimo_link).toBe(0)
+  })
   it('listar_campanas filtra por tipo y abiertas', async () => {
     expect((await ok('listar_campanas', { tipo: 'Clipping', estado: 'Abiertas' })).cantidad).toBe(1)
   })
