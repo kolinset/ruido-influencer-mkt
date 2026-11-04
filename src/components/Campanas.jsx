@@ -5,6 +5,7 @@ import Modal from './Modal'
 import SharePanel from './SharePanel'
 import Reportes from './Reportes'
 import Pagos from './Pagos'
+import BriefCampana from './BriefCampana'
 import LinksCampana from './LinksCampana'
 import MetricasCampana from './MetricasCampana'
 
@@ -80,7 +81,7 @@ const AV_COLORS = [
 ]
 
 const TABS_LISTA = ['Activas', 'Programadas', 'Pausadas', 'Cerradas', 'Canceladas', 'Todas']
-const TABS_DETALLE = ['influencers', 'pagos', 'reportes']
+const TABS_DETALLE = ['influencers', 'brief', 'pagos', 'reportes']
 const PLATAFORMAS = ['Ambas', 'TikTok', 'Instagram']
 
 // Día de inicio de una campaña programada: "15 nov · en 13 días"
@@ -1680,6 +1681,7 @@ export default function Campanas({ initialCamp = null }) {
                 </div>
               </div>
             )}
+            {campTab === 'brief' && <BriefCampana key={currentCamp.id} camp={currentCamp} onUpdate={fetchCamps} />}
             {campTab === 'pagos' && <Pagos camp={currentCamp} onUpdate={fetchCamps} />}
             {campTab === 'reportes' && <Reportes camp={currentCamp} roster={roster} />}
           </>
