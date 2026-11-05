@@ -1,5 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import supabase from './lib/supabaseClient'
+import sql from './lib/db'
+import { navegar, useRuta } from './lib/ruta'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import './index.css'
@@ -18,6 +20,14 @@ const VistaClienteDashboard = lazy(() => import('./components/VistaClienteDashbo
 const VistaEditor = lazy(() => import('./components/VistaEditor'))
 const SocialBoost = lazy(() => import('./components/SocialBoost'))
 
+// Dirección de cada página del menú
+const RUTAS = { dashboard: '/', roster: '/roster', campanas: '/campanas', clientes: '/clientes', servicios: '/servicios', socialboost: '/socialboost', 'pagos-globales': '/pagos' }
+const paginaDeRuta = ([seccion, id]) => {
+  if (seccion === 'clientes' && id) return 'cliente-detail'
+  if (seccion === 'pagos') return 'pagos-globales'
+  return RUTAS[seccion] ? seccion : 'dashboard'
+}
+
 const Cargando = () => <div style={{ padding: 40, color: '#AAA', fontSize: 13 }}>Cargando…</div>
 
 function useIsMobile() {
@@ -35,13 +45,14 @@ function useIsMobile() {
 export default function App() {
   const isMobile = useIsMobile()
   const [auth, setAuth] = useState(false)
-  const [page, setPage] = useState('dashboard')
+  const ruta = useRuta()
+  const page = paginaDeRuta(ruta)
+  const clienteId = page === 'cliente-detail' ? ruta[1] : null
   const [publicToken, setPublicToken] = useState(null)
   const [reportToken, setReportToken] = useState(null)
   const [clientDashboardToken, setClientDashboardToken] = useState(null)
   const [editorToken, setEditorToken] = useState(null)
   const [selectedClient, setSelectedClient] = useState(null)
-  const [campanaFromClient, setCampanaFromClient] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -63,6 +74,17 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  // Al refrescar en el detalle de un cliente hay que volver a traer sus datos
+  useEffect(() => {
+    if (!auth || !clienteId || String(selectedClient?.id) === clienteId) return
+    let vigente = true
+    const salir = () => { if (vigente) navegar('/clientes', { reemplazar: true }) }
+    sql`SELECT * FROM clients WHERE id = ${clienteId}`
+      .then(([cliente]) => { if (!vigente) return; if (cliente) setSelectedClient(cliente); else salir() })
+      .catch(e => { console.error(e); salir() })
+    return () => { vigente = false }
+  }, [auth, clienteId])
+
   function handleLogout() {
     supabase.auth.signOut()
     setAuth(false)
@@ -70,18 +92,16 @@ export default function App() {
 
   function handleSelectCliente(client) {
     setSelectedClient(client)
-    setPage('cliente-detail')
+    navegar(`/clientes/${client.id}`)
   }
 
   function handleOpenCampanaFromClient(camp) {
-    setCampanaFromClient(camp)
-    setPage('campanas')
+    navegar(`/campanas/${camp.id}`)
   }
 
   function handleSetPage(p) {
     setSelectedClient(null)
-    setCampanaFromClient(null)
-    setPage(p)
+    navegar(RUTAS[p])
   }
 
   if (publicToken) return <><Ambient /><Suspense fallback={<Cargando />}><VistaCliente token={publicToken} /></Suspense></>
@@ -98,17 +118,17 @@ export default function App() {
       <Sidebar page={page} setPage={handleSetPage} onLogout={handleLogout} />
       <main style={{ flex: 1, minWidth: 0, paddingBottom: isMobile ? 'calc(76px + env(safe-area-inset-bottom))' : 0 }}>
         <Suspense fallback={<Cargando />}>
-        {page === 'dashboard'      && <Dashboard onNavigate={setPage} />}
+        {page === 'dashboard'      && <Dashboard onNavigate={handleSetPage} />}
         {page === 'roster'         && <Roster />}
-        {page === 'campanas'       && <Campanas initialCamp={campanaFromClient} />}
+        {page === 'campanas'       && <Campanas />}
         {page === 'clientes'       && <Clientes onSelectCliente={handleSelectCliente} />}
         {page === 'servicios'      && <Servicios />}
         {page === 'socialboost'    && <SocialBoost />}
         {page === 'pagos-globales' && <PagosGlobales onBack={() => handleSetPage('dashboard')} />}
-        {page === 'cliente-detail' && selectedClient && (
+        {page === 'cliente-detail' && String(selectedClient?.id) === clienteId && (
           <ClienteDashboard
             client={selectedClient}
-            onBack={() => setPage('clientes')}
+            onBack={() => handleSetPage('clientes')}
             onOpenCampaign={handleOpenCampanaFromClient}
           />
         )}

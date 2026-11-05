@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import sql from '../lib/db'
+import { navegar, useRuta } from '../lib/ruta'
 import Modal from './Modal'
 import MetricasCampana from './MetricasCampana'
 import SbCuentas from './SbCuentas'
@@ -42,9 +43,14 @@ const primerNombre = n => (n || '').split(' ')[0]
 
 // ═════════════════════════ DASHBOARD ═════════════════════════
 export default function SocialBoost() {
-  const [inicio, setInicio] = useState(mondayOf(ymd(new Date())))
-  const [vista, setVista] = useState('dashboard') // dashboard | config | cancion
-  const [cancionSel, setCancionSel] = useState(null) // slot abierto
+  // Semana y vista salen de la dirección: /socialboost/<lunes>/<vista>/<slot>
+  const [, semanaRuta, vistaRuta, slotRuta] = useRuta()
+  const inicio = mondayOf(/^\d{4}-\d{2}-\d{2}$/.test(semanaRuta || '') ? semanaRuta : ymd(new Date()))
+  const vista = ['config', 'cuentas', 'cancion'].includes(vistaRuta) ? vistaRuta : 'dashboard' // dashboard | config | cuentas | cancion
+  const cancionSel = vista === 'cancion' && slotRuta ? Number(slotRuta) : null // slot abierto
+  const setInicio = d => navegar(`/socialboost/${d}`)
+  const setVista = v => navegar(`/socialboost/${inicio}${v === 'dashboard' ? '' : `/${v}`}`)
+  const abrirCancion = n => navegar(`/socialboost/${inicio}/cancion/${n}`)
   const [cuentas, setCuentas] = useState([])
   const [semana, setSemana] = useState(null)
   const [slots, setSlots] = useState([])
@@ -291,7 +297,7 @@ export default function SocialBoost() {
               const falta = Math.max(0, m - s.vids_sem)
               const sinVideos = s.vids_sem === 0
               return (
-                <div key={n} className="card" onClick={() => { setCancionSel(n); setVista('cancion') }}
+                <div key={n} className="card" onClick={() => { abrirCancion(n) }}
                   style={{ borderTop: '3px solid #C4501A', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 300, transition: 'box-shadow .12s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
@@ -320,7 +326,7 @@ export default function SocialBoost() {
                   </div>
                   <div style={{ flex: 1 }} />
                   <div style={{ display: 'flex', gap: 6, padding: '0 14px 14px' }} onClick={e => e.stopPropagation()}>
-                    <button className="btn-red" style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }} onClick={() => { setCancionSel(n); setVista('cancion') }}>＋ Agregar videos</button>
+                    <button className="btn-red" style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }} onClick={() => { abrirCancion(n) }}>＋ Agregar videos</button>
                     {!s.audio_url && <span className="btn-ghost" title="Falta el link del audio" style={{ fontSize: 11.5, padding: '8px 10px', color: '#C0392B', cursor: 'default' }}>sin audio</span>}
                     {s.tokchart_url
                       ? <a href={s.tokchart_url} target="_blank" rel="noreferrer" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12.5, padding: '8px 10px' }}>Tokchart ↗</a>

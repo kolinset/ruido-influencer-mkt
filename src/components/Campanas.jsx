@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import sql from '../lib/db'
+import { navegar, useRuta } from '../lib/ruta'
 import { convertTikTok, convertMany, isMobileTikTok, cleanInstagram, tokchartCall, tieneReporteTokchart } from '../lib/links'
 import Modal from './Modal'
 import SharePanel from './SharePanel'
@@ -541,11 +542,15 @@ function CampFormFields({ form, setForm, error, clientsList, servicesList }) {
   )
 }
 
-export default function Campanas({ initialCamp = null }) {
+export default function Campanas() {
   const isMobile = useIsMobile()
   const [camps, setCamps] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currentCamp, setCurrentCamp] = useState(initialCamp)
+  // La campaña abierta y su pestaña salen de la dirección: /campanas/<id>/<pestaña>
+  const [, campId, campTabRuta] = useRuta()
+  const currentCamp = campId ? camps.find(c => String(c.id) === campId) || null : null
+  const campTab = TABS_DETALLE.includes(campTabRuta) ? campTabRuta : 'influencers'
+  const setCampTab = t => navegar(`/campanas/${currentCamp.id}${t === 'influencers' ? '' : `/${t}`}`, { subir: false })
   const [roster, setRoster] = useState([])
   const [clientsList, setClientsList] = useState([])
   const [servicesList, setServicesList] = useState([])
@@ -555,7 +560,6 @@ export default function Campanas({ initialCamp = null }) {
   const [filterAnio, setFilterAnio] = useState('')
   const [filterServicio, setFilterServicio] = useState('')
   const [sortOrder, setSortOrder] = useState('reciente')
-  const [campTab, setCampTab] = useState('influencers')
 
   const [modalNewCamp, setModalNewCamp] = useState(false)
   const [campForm, setCampForm] = useState(EMPTY_CAMP)
@@ -595,6 +599,11 @@ export default function Campanas({ initialCamp = null }) {
   const [editPlaylistForm, setEditPlaylistForm] = useState({ nombre: '', link: '' })
 
   useEffect(() => { fetchCamps(); fetchRosterAndClients() }, [])
+
+  // Dirección de una campaña que ya no existe: vuelve a la lista
+  useEffect(() => {
+    if (campId && !currentCamp && !loading) navegar('/campanas', { reemplazar: true })
+  }, [campId, currentCamp, loading])
 
   useEffect(() => {
     if (currentCamp?.tipo === 'Playlisting') fetchPlaylists(currentCamp.id)
@@ -690,11 +699,7 @@ export default function Campanas({ initialCamp = null }) {
         })
       }))
       setCamps(list)
-      const idToSelect = selectId || currentCamp?.id
-      if (idToSelect) {
-        const updated = list.find(c => c.id === idToSelect)
-        if (updated) setCurrentCamp(updated)
-      }
+      if (selectId) navegar(`/campanas/${selectId}`)
     } catch (e) { console.error(e) }
     setLoading(false)
   }
@@ -849,7 +854,7 @@ export default function Campanas({ initialCamp = null }) {
     try {
       await sql`DELETE FROM campaigns WHERE id = ${id}`
       setDeleteCampId(null)
-      if (currentCamp?.id === id) setCurrentCamp(null)
+      if (currentCamp?.id === id) navegar('/campanas', { reemplazar: true })
       await fetchCamps()
     } catch (e) { console.error(e) }
   }
@@ -1302,7 +1307,7 @@ export default function Campanas({ initialCamp = null }) {
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 14 : 20 }}>
           <div style={{ fontSize: 12, color: '#AAA', cursor: 'pointer', marginBottom: 6 }}
-            onClick={() => { setCurrentCamp(null); setCampTab('influencers') }}>
+            onClick={() => navegar('/campanas')}>
             ← Volver a campañas
           </div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: isMobile ? 12 : 8 }}>
@@ -1428,7 +1433,7 @@ export default function Campanas({ initialCamp = null }) {
         {/* Métricas leídas del reporte de Tokchart: lo mismo que ve el cliente en su portal */}
         {currentCamp.tipo !== 'Playlisting' && (
           <MetricasCampana key={currentCamp.id} campaignId={currentCamp.id} nombre={currentCamp.nombre} isMobile={isMobile} admin onData={d => {
-            if (d?.disponible && d.total.views > 0) setCurrentCamp(c => c && c.id === currentCamp.id ? { ...c, views_logradas: d.total.views } : c)
+            if (d?.disponible && d.total.views > 0) setCamps(cs => cs.map(c => c.id === currentCamp.id ? { ...c, views_logradas: d.total.views } : c))
           }} />
         )}
 
@@ -2013,7 +2018,7 @@ export default function Campanas({ initialCamp = null }) {
             return (
               <div key={camp.id} className="card"
                 style={{ padding: 18, cursor: 'pointer', transition: 'border-color .15s', opacity: isInactive ? 0.75 : 1 }}
-                onClick={() => { setCurrentCamp(camp); setCampTab('influencers') }}
+                onClick={() => navegar(`/campanas/${camp.id}`)}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#C4501A'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E5E2'}
               >
