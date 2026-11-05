@@ -75,7 +75,7 @@ export const HERRAMIENTAS = [
   { name: 'listar_servicios', description: 'Servicios activos con su % utilizable (lo que se puede gastar del budget; el resto es margen de Kolinset).', inputSchema: S({}) },
   { name: 'listar_campanas', description: 'Lista campañas con filtros. Estados: Programada, Activa, Pausada, Cerrada (finalizada), Cancelada.',
     inputSchema: S({ estado: { type: 'string', enum: ['Programada', 'Activa', 'Pausada', 'Cerrada', 'Cancelada', 'Abiertas'] }, tipo: { type: 'string', enum: TIPOS }, cliente_id: { type: 'string' }, texto: { type: 'string', description: 'Parte del nombre, artista o canción.' }, limite: { type: 'integer', minimum: 1, maximum: 100 } }) },
-  { name: 'ver_campana', description: 'Detalle de una campaña: datos, brief completo (lo que se manda o se mandó a los influencers; léelo antes de armar una lista), influencers (estado, costo, links de video, pago), budget utilizable/usado/restante, links cargados y métricas.',
+  { name: 'ver_campana', description: 'Detalle de una campaña: datos, brief completo (lo que se manda o se mandó a los influencers; léelo antes de armar una lista), influencers (estado, costo, links de video, pago), budget utilizable/usado/restante, links cargados, métricas y el link público del reporte de Tokchart (reporte_tokchart), que sirve para guardar las métricas en PDF.',
     inputSchema: S({ campana_id: { type: 'string' } }, ['campana_id']) },
   { name: 'avance_campanas', description: 'Avance de todas las campañas abiertas según su tipo: Influencer MKT (quién falta por publicar), Clipping (views vs meta), Nano Blast (links cargados), Playlisting (recordar pedir números de Spotify for Artists). Marca cuáles están listas para finalizar.',
     inputSchema: S({}) },
@@ -235,7 +235,8 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
         budget_detalle: { utilizable_pct: pct, utilizable, usado_en_influencers: usado, restante: utilizable - usado, texto: `Utilizable ${plata(utilizable, c.moneda)} (${pct}%), usado ${plata(usado, c.moneda)}, quedan ${plata(utilizable - usado, c.moneda)}` },
         influencers: infs.map(i => ({ ...i, costo: num(i.costo), costo_con_impuestos: calcCosto(i.costo, i.tipo_facturacion) })),
         links_cargados: nLinks, views_logradas: num(c.views_logradas), views_min: num(c.views_min), views_max: num(c.views_max),
-        metricas: met, avance: avanceDe(c, infs, [], hoy).texto }
+        metricas: met, avance: avanceDe(c, infs, [], hoy).texto,
+        reporte_tokchart: { tiktok: (c.reporte_url_tt || '').trim() || null, instagram: (c.reporte_url_ig || '').trim() || null } }
     }
 
     case 'avance_campanas': {
