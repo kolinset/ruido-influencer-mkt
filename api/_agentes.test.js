@@ -223,6 +223,7 @@ describe('brief y costo por view', () => {
   it('ver_campana trae el brief completo', async () => {
     const r = await ok('ver_campana', { campana_id: C_IMKT })
     expect(r.brief).toBe('Trend de baile para el estreno de Faros')
+    expect(r.reporte_tokchart).toEqual({ tiktok: null, instagram: null })
   })
   it('historial_influencer: CPV con impuestos y extracto del brief de cada campaña', async () => {
     const r = await ok('historial_influencer', { influencer_id: '3' })
