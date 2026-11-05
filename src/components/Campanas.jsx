@@ -727,6 +727,8 @@ export default function Campanas({ initialCamp = null }) {
 
   async function saveCamp() {
     if (!campForm.nombre.trim()) return
+    // Sin servicio la campaña quedaría con 100% utilizable y sin margen
+    if (!campForm.service_id) { setCampFormError('Selecciona un servicio: de ahí sale el % utilizable de la campaña.'); return }
     const err = validateForm(campForm)
     if (err) { setCampFormError(err); return }
     setCampFormError('')
@@ -822,6 +824,7 @@ export default function Campanas({ initialCamp = null }) {
           views_min = ${parseInt(editCampForm.views_min) || 0},
           views_max = ${parseInt(editCampForm.views_max) || 0},
           service_id = ${editCampForm.service_id ? parseInt(editCampForm.service_id) : null},
+          utilizable_pct = ${editCampForm.utilizable_pct !== '' ? parseFloat(editCampForm.utilizable_pct) : currentCamp.utilizable_pct},
           solicitado_por = ${editCampForm.solicitado_por || ''}
         WHERE id = ${currentCamp.id}
       `
