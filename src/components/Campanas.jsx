@@ -180,6 +180,9 @@ function FacturacionToggle({ value, onChange }) {
     </div>
   )
 }
+// Para buscar sin importar mayúsculas ni tildes
+const sinTildes = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 function isValidUrl(url) {
   if (!url || !url.trim()) return true
   try {
@@ -548,6 +551,7 @@ export default function Campanas({ initialCamp = null }) {
   const [servicesList, setServicesList] = useState([])
   const [categoriasList, setCategoriasList] = useState([])
   const [tab, setTab] = useState('Activas')
+  const [busqueda, setBusqueda] = useState('')
   const [filterAnio, setFilterAnio] = useState('')
   const [filterServicio, setFilterServicio] = useState('')
   const [sortOrder, setSortOrder] = useState('reciente')
@@ -1174,9 +1178,20 @@ export default function Campanas({ initialCamp = null }) {
 
   const anios = [...new Set(camps.map(c => c.created_at ? new Date(c.created_at).getFullYear() : null).filter(Boolean))].sort((a, b) => b - a)
 
+  // Al buscar se mira en todas las campañas, no solo en la pestaña abierta
+  const terminos = sinTildes(busqueda).split(/\s+/).filter(Boolean)
+  const buscando = terminos.length > 0
+  const coincideBusqueda = c => {
+    const texto = sinTildes([
+      c.nombre, c.cliente, c.client_nombre, c.artista, c.cancion,
+      ...c.influencers.flatMap(i => [i.nombre, i.ig_usuario, i.tt_usuario]),
+    ].join(' '))
+    return terminos.every(t => texto.includes(t))
+  }
+
   const filteredCamps = camps
     .filter(c => {
-      const matchEstado = tab === 'Todas' || c.estado === tab.slice(0, -1)
+      const matchEstado = buscando ? coincideBusqueda(c) : tab === 'Todas' || c.estado === tab.slice(0, -1)
       const matchAnio = !filterAnio || (c.created_at && new Date(c.created_at).getFullYear() === parseInt(filterAnio))
       const matchServicio = !filterServicio || (c.service_nombre || 'Sin servicio') === filterServicio
       return matchEstado && matchAnio && matchServicio
@@ -1911,8 +1926,18 @@ export default function Campanas({ initialCamp = null }) {
         </button>
       </div>
 
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input className="input" type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por campaña, cliente, artista, canción o influencer…"
+          aria-label="Buscar campañas" style={{ width: '100%', paddingRight: 36, minHeight: isMobile ? 42 : 'auto' }} />
+        {busqueda && (
+          <button className="btn-icon" onClick={() => setBusqueda('')} aria-label="Borrar búsqueda"
+            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)' }}>✕</button>
+        )}
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div className="tabs-scroll" style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, border: '0.5px solid #E5E5E2', flex: isMobile ? '1 1 100%' : 'none' }}>
+        <div className="tabs-scroll" style={{ display: 'flex', gap: 2, background: '#F0F0EE', borderRadius: 10, padding: 3, border: '0.5px solid #E5E5E2', flex: isMobile ? '1 1 100%' : 'none', opacity: buscando ? 0.5 : 1 }}>
           {TABS_LISTA.map(t => {
             const count = t === 'Todas' ? camps.length : camps.filter(c => c.estado === t.slice(0, -1)).length
             return (
@@ -1937,7 +1962,7 @@ export default function Campanas({ initialCamp = null }) {
       </div>
 
       {(() => {
-        const base = camps.filter(c => (tab === 'Todas' || c.estado === tab.slice(0, -1)) && (!filterAnio || (c.created_at && new Date(c.created_at).getFullYear() === parseInt(filterAnio))))
+        const base = camps.filter(c => (buscando ? coincideBusqueda(c) : tab === 'Todas' || c.estado === tab.slice(0, -1)) && (!filterAnio || (c.created_at && new Date(c.created_at).getFullYear() === parseInt(filterAnio))))
         const conteo = {}
         camps.forEach(c => { conteo[c.service_nombre || 'Sin servicio'] = 0 })
         base.forEach(c => { conteo[c.service_nombre || 'Sin servicio']++ })
@@ -1962,8 +1987,18 @@ export default function Campanas({ initialCamp = null }) {
         )
       })()}
 
+      {buscando && filteredCamps.length > 0 && (
+        <p style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
+          {filteredCamps.length === 1 ? '1 resultado' : `${filteredCamps.length} resultados`} en todas las campañas
+        </p>
+      )}
+
       {filteredCamps.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', color: '#AAA', fontSize: 13 }}>No hay campañas {tab !== 'Todas' ? tab.toLowerCase() : ''}{filterServicio ? ` de ${filterServicio}` : ''}.</div>
+        <div style={{ padding: 60, textAlign: 'center', color: '#AAA', fontSize: 13 }}>
+          {buscando
+            ? `No se encontraron campañas con "${busqueda.trim()}"${filterServicio ? ` en ${filterServicio}` : ''}${filterAnio ? ` en ${filterAnio}` : ''}.`
+            : `No hay campañas ${tab !== 'Todas' ? tab.toLowerCase() : ''}${filterServicio ? ` de ${filterServicio}` : ''}.`}
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filteredCamps.map(camp => {
