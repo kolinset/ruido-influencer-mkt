@@ -755,7 +755,7 @@ function Config({ cuentas, onBack, onChanged }) {
   }
 
   const cargarClientes = useCallback(async () => {
-    try { setClientes(await sql`SELECT id, nombre, social_boost_activo FROM clients ORDER BY nombre`) } catch (e) { console.error(e) }
+    try { setClientes(await sql`SELECT id, nombre, social_boost_activo FROM clients WHERE eliminado_at IS NULL ORDER BY nombre`) } catch (e) { console.error(e) }
   }, [])
   useEffect(() => { cargarClientes() }, [cargarClientes])
   async function toggleCliente(c) {

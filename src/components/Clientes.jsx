@@ -44,6 +44,14 @@ function ClientAvatar({ nombre, color, size = 40 }) {
 
 const EMPTY_FORM = { nombre: '', color: '#C4501A', logo_url: '' }
 
+// Un cliente eliminado queda en el basurero estos días y después el envío diario lo borra por completo
+// (ver purgarBasurero en api/resumen-diario.js)
+const DIAS_BASURERO = 7
+function diasRestantes(eliminadoAt) {
+  const ms = new Date(eliminadoAt).getTime() + DIAS_BASURERO * 86400000 - Date.now()
+  return Math.max(0, Math.ceil(ms / 86400000))
+}
+
 export default function Clientes({ onSelectCliente }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -52,6 +60,10 @@ export default function Clientes({ onSelectCliente }) {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const [verBasurero, setVerBasurero] = useState(false)
+  const [foreverId, setForeverId] = useState(null) // eliminar ya, sin esperar los 7 días
   const [search, setSearch] = useState('')
 
   useEffect(() => { fetchClients() }, [])
@@ -112,17 +124,59 @@ export default function Clientes({ onSelectCliente }) {
     setSaving(false)
   }
 
-  async function handleDelete(id) {
-    try {
-      // Desasignar campañas antes de eliminar
-      await sql`UPDATE campaigns SET client_id = NULL WHERE client_id = ${id}`
-      await sql`DELETE FROM clients WHERE id = ${id}`
-      setDeleteId(null)
-      await fetchClients()
-    } catch (e) { console.error(e) }
+  function closeDelete() {
+    setDeleteId(null)
+    setForeverId(null)
+    setDeleteError('')
   }
 
-  const filtered = clients.filter(c =>
+  // Eliminar = mover al basurero (se puede restaurar durante DIAS_BASURERO días)
+  async function moverAlBasurero(id) {
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await sql`UPDATE clients SET eliminado_at = now() WHERE id = ${id}`
+      closeDelete()
+      await fetchClients()
+    } catch (e) {
+      console.error(e)
+      setDeleteError(`No se pudo eliminar: ${e.message}`)
+    }
+    setDeleting(false)
+  }
+
+  async function restaurar(id) {
+    try {
+      await sql`UPDATE clients SET eliminado_at = NULL WHERE id = ${id}`
+      await fetchClients()
+    } catch (e) { console.error(e); alert(`No se pudo restaurar: ${e.message}`) }
+  }
+
+  // Borrado definitivo desde el basurero
+  async function handleDelete(id) {
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      // Una sola consulta: desasigna sus campañas, borra su link de portal y elimina el cliente.
+      // Si algo falla no se cambia nada (antes las campañas quedaban sin cliente aunque el cliente no se borrara).
+      await sql`
+        WITH sin_cliente AS (UPDATE campaigns SET client_id = NULL WHERE client_id = ${id}),
+             sin_portal AS (DELETE FROM client_tokens WHERE client_id = ${id})
+        DELETE FROM clients WHERE id = ${id} AND eliminado_at IS NOT NULL
+      `
+      closeDelete()
+      await fetchClients()
+    } catch (e) {
+      console.error(e)
+      // Si otra tabla todavía usa este cliente, se muestra el motivo en vez de no hacer nada
+      setDeleteError(`No se pudo eliminar: ${e.message}`)
+    }
+    setDeleting(false)
+  }
+
+  const activos = clients.filter(c => !c.eliminado_at)
+  const basurero = clients.filter(c => c.eliminado_at).sort((a, b) => new Date(a.eliminado_at) - new Date(b.eliminado_at))
+  const filtered = activos.filter(c =>
     !search || c.nombre.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -131,10 +185,47 @@ export default function Clientes({ onSelectCliente }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500 }}>Clientes</h1>
-          <p style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{clients.length} clientes registrados</p>
+          <p style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{activos.length} clientes registrados</p>
         </div>
-        <button className="btn-red" onClick={openNew}>+ Nuevo cliente</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {(basurero.length > 0 || verBasurero) && (
+            <button className="btn-ghost" onClick={() => setVerBasurero(v => !v)}>
+              {verBasurero ? '← Clientes' : `Basurero (${basurero.length})`}
+            </button>
+          )}
+          {!verBasurero && <button className="btn-red" onClick={openNew}>+ Nuevo cliente</button>}
+        </div>
       </div>
+
+      {verBasurero ? (
+        <div>
+          <p style={{ fontSize: 12.5, color: '#888', marginBottom: 14 }}>
+            Los clientes eliminados se pueden restaurar durante {DIAS_BASURERO} días. Después se eliminan por completo y sus campañas quedan sin cliente.
+          </p>
+          {basurero.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: '#AAA', fontSize: 13 }}>El basurero está vacío.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {basurero.map(client => {
+                const dias = diasRestantes(client.eliminado_at)
+                return (
+                  <div key={client.id} className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <ClientAvatar nombre={client.nombre} color={client.color} size={36} />
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>{client.nombre}</div>
+                      <div style={{ fontSize: 11.5, color: '#AAA', marginTop: 2 }}>
+                        {client.total_campanas} campañas · {dias === 0 ? 'se elimina hoy' : `se elimina en ${dias} ${dias === 1 ? 'día' : 'días'}`}
+                      </div>
+                    </div>
+                    <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => restaurar(client.id)}>Restaurar</button>
+                    <button className="btn-ghost" style={{ fontSize: 12, color: '#C0392B' }} onClick={() => { setDeleteError(''); setForeverId(client.id) }}>Eliminar ahora</button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      ) : (<>
 
       <div style={{ marginBottom: 16 }}>
         <input className="input" placeholder="Buscar cliente..."
@@ -194,6 +285,7 @@ export default function Clientes({ onSelectCliente }) {
           ))}
         </div>
       )}
+      </>)}
 
       {/* Modal crear/editar */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Editar cliente' : 'Nuevo cliente'}>
@@ -236,14 +328,30 @@ export default function Clientes({ onSelectCliente }) {
       </Modal>
 
       {/* Modal eliminar */}
-      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar cliente">
+      <Modal open={!!deleteId} onClose={closeDelete} title="Eliminar cliente">
         <p style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-          ¿Eliminar este cliente? Sus campañas quedarán sin cliente asignado pero no se eliminarán.
+          ¿Eliminar este cliente? Pasará al basurero y su link de portal dejará de funcionar.
         </p>
-        <p style={{ fontSize: 12, color: '#AAA', marginBottom: 20 }}>Esta acción no se puede deshacer.</p>
+        <p style={{ fontSize: 12, color: '#AAA', marginBottom: deleteError ? 10 : 20 }}>
+          Puedes restaurarlo durante {DIAS_BASURERO} días. Después se elimina por completo y sus campañas quedan sin cliente asignado (no se eliminan).
+        </p>
+        {deleteError && <p style={{ fontSize: 12, color: '#C0392B', marginBottom: 16, overflowWrap: 'anywhere' }}>{deleteError}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn-ghost" onClick={() => setDeleteId(null)}>Cancelar</button>
-          <button className="btn-danger" onClick={() => handleDelete(deleteId)}>Eliminar</button>
+          <button className="btn-ghost" onClick={closeDelete}>Cancelar</button>
+          <button className="btn-danger" disabled={deleting} onClick={() => moverAlBasurero(deleteId)}>{deleting ? 'Eliminando…' : 'Eliminar'}</button>
+        </div>
+      </Modal>
+
+      {/* Modal eliminar ya, desde el basurero */}
+      <Modal open={!!foreverId} onClose={closeDelete} title="Eliminar por completo">
+        <p style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+          ¿Eliminar este cliente ahora, sin esperar los {DIAS_BASURERO} días? Sus campañas quedarán sin cliente asignado pero no se eliminarán.
+        </p>
+        <p style={{ fontSize: 12, color: '#AAA', marginBottom: deleteError ? 10 : 20 }}>Esta acción no se puede deshacer.</p>
+        {deleteError && <p style={{ fontSize: 12, color: '#C0392B', marginBottom: 16, overflowWrap: 'anywhere' }}>{deleteError}</p>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn-ghost" onClick={closeDelete}>Cancelar</button>
+          <button className="btn-danger" disabled={deleting} onClick={() => handleDelete(foreverId)}>{deleting ? 'Eliminando…' : 'Eliminar por completo'}</button>
         </div>
       </Modal>
     </div>

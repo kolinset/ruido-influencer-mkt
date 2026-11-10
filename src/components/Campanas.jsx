@@ -708,7 +708,7 @@ export default function Campanas() {
     try {
       const [rosterData, clientsData, svcsData, catsData] = await Promise.all([
         sql`SELECT * FROM influencers WHERE estado = 'Activo' ORDER BY tt_seguidores DESC`,
-        sql`SELECT id, nombre, color FROM clients ORDER BY nombre ASC`,
+        sql`SELECT id, nombre, color FROM clients WHERE eliminado_at IS NULL ORDER BY nombre ASC`,
         sql`SELECT id, nombre, utilizable_pct FROM services WHERE activo = true ORDER BY nombre ASC`,
         sql`SELECT nombre FROM categorias_influencer WHERE activo = true ORDER BY nombre ASC`,
       ])

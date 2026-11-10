@@ -7,7 +7,7 @@ import { responder } from './mcp.js'
 import { resolverPropuesta } from './_propuestas.js'
 
 const ESQUEMA = `
-CREATE TABLE clients (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nombre text, slug text, color text, logo_url text);
+CREATE TABLE clients (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nombre text, slug text, color text, logo_url text, eliminado_at timestamptz);
 CREATE TABLE services (id serial PRIMARY KEY, nombre text, descripcion text, utilizable_pct numeric, activo boolean DEFAULT true);
 CREATE TABLE categorias_influencer (id serial PRIMARY KEY, nombre text, activo boolean DEFAULT true);
 CREATE TABLE campaigns (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nombre text, cliente text, client_id uuid, budget integer, budget_total integer, moneda text, brief text,

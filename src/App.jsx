@@ -79,7 +79,7 @@ export default function App() {
     if (!auth || !clienteId || String(selectedClient?.id) === clienteId) return
     let vigente = true
     const salir = () => { if (vigente) navegar('/clientes', { reemplazar: true }) }
-    sql`SELECT * FROM clients WHERE id = ${clienteId}`
+    sql`SELECT * FROM clients WHERE id = ${clienteId} AND eliminado_at IS NULL`
       .then(([cliente]) => { if (!vigente) return; if (cliente) setSelectedClient(cliente); else salir() })
       .catch(e => { console.error(e); salir() })
     return () => { vigente = false }

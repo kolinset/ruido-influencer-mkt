@@ -87,6 +87,28 @@ async function activarProgramadas(fecha) {
   }
 }
 
+// Clientes que llevan más de 7 días en el basurero: se eliminan por completo (lo hace el envío diario).
+// Sus campañas quedan sin cliente y se borra su link de portal, todo en una sola consulta.
+// Va de a un cliente: si uno no se puede borrar (otra tabla lo usa), los demás sí se borran y ese queda igual.
+// Si falla (o la columna eliminado_at todavía no existe) sigue con el resumen.
+async function purgarBasurero() {
+  try {
+    const viejos = (await pool.query(`SELECT id FROM clients WHERE eliminado_at < now() - interval '7 days'`)).rows
+    for (const { id } of viejos) {
+      try {
+        await pool.query(`
+          WITH sin_cliente AS (UPDATE campaigns SET client_id = NULL WHERE client_id = $1),
+               sin_portal AS (DELETE FROM client_tokens WHERE client_id = $1)
+          DELETE FROM clients WHERE id = $1 AND eliminado_at IS NOT NULL`, [id])
+      } catch (e) {
+        console.error('resumen basurero cliente', id, e.message)
+      }
+    }
+  } catch (e) {
+    console.error('resumen basurero clientes:', e.message)
+  }
+}
+
 // ───── Datos ─────
 async function armarResumen(activadas = []) {
   const fecha = hoyChile()
@@ -419,6 +441,7 @@ export default async function handler(req, res) {
     const appUrl = `https://${req.headers['x-forwarded-host'] || req.headers.host}`
     // Solo el envío automático cambia estados (ver la vista previa no toca nada)
     const activadas = esCron ? await activarProgramadas(hoyChile()) : []
+    if (esCron) await purgarBasurero()
     const resumen = await armarResumen(activadas)
     const html = htmlResumen(resumen, appUrl)
     if (preview && !esCron) {

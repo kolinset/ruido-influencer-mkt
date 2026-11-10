@@ -203,7 +203,7 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
     case 'buscar_clientes': {
       const t = String(a.texto || '').trim()
       if (t.length < 2) falla('Escribe al menos 2 letras.')
-      return { clientes: await filas(db, `SELECT id, nombre FROM clients WHERE nombre ILIKE $1 ORDER BY nombre LIMIT 20`, [`%${t.replace(/[%_]/g, '')}%`]) }
+      return { clientes: await filas(db, `SELECT id, nombre FROM clients WHERE nombre ILIKE $1 AND eliminado_at IS NULL ORDER BY nombre LIMIT 20`, [`%${t.replace(/[%_]/g, '')}%`]) }
     }
 
     case 'listar_servicios':
@@ -294,7 +294,7 @@ export async function ejecutar(db, nombre, a = {}, { agente = 'agente', hoy = ho
       const artista = String(a.artista || '').trim(), cancion = String(a.cancion || '').trim()
       if (!artista || !cancion) falla('Faltan el artista y la canción.')
       const nombre = nombreCampana(a.tipo, artista, cancion)
-      const cliente = await fila(db, `SELECT id, nombre FROM clients WHERE id::text = $1`, [String(a.cliente_id)])
+      const cliente = await fila(db, `SELECT id, nombre FROM clients WHERE id::text = $1 AND eliminado_at IS NULL`, [String(a.cliente_id)])
       if (!cliente) falla('No existe ese cliente en ROSTER (búscalo con buscar_clientes; si es nuevo, el equipo debe crearlo).')
       const svc = await fila(db, `SELECT id, nombre, utilizable_pct FROM services WHERE activo = true AND lower(nombre) = lower($1)`, [a.tipo])
       if (!svc) falla(`No hay un servicio activo llamado "${a.tipo}" en ROSTER. Revisa listar_servicios.`)

@@ -75,7 +75,7 @@ export const PUBLIC_QUERIES = {
     SELECT ct.*, c.nombre AS client_nombre, c.color, c.slug, c.social_boost_activo
     FROM client_tokens ct
     JOIN clients c ON c.id = ct.client_id
-    WHERE ct.token = $1 AND ct.activo = true
+    WHERE ct.token = $1 AND ct.activo = true AND c.eliminado_at IS NULL
     LIMIT 1`,
 
   portalTokenExiste: `SELECT id FROM client_tokens WHERE token = $1`,
